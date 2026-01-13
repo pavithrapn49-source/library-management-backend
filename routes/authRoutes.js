@@ -4,7 +4,35 @@ import User from "../models/user.js";
 
 const router = express.Router();
 
-// LOGIN
+/* ================= REGISTER ================= */
+router.post("/register", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Check existing user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Create new user
+    const newUser = new User({
+      email,
+      password, // ⚠️ later we will hash this
+      isAdmin: false,
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      message: "Signup successful",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -16,10 +44,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        isAdmin: user.isAdmin,
-      },
+      { id: user._id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
