@@ -6,31 +6,37 @@ const router = express.Router();
 
 /* ================= REGISTER ================= */
 router.post("/register", async (req, res) => {
-  const { email, password } = req.body;
-
   try {
-    // Check existing user
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    console.log(req.body); // 🔥 IMPORTANT DEBUG LINE
+
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "All fields are required"
+      });
     }
 
-    // Create new user
-    const newUser = new User({
+    const user = new User({
+      name,
       email,
-      password, // ⚠️ later we will hash this
-      isAdmin: false,
+      password
     });
 
-    await newUser.save();
+    await user.save();
 
     res.status(201).json({
-      message: "Signup successful",
+      message: "User registered successfully"
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({
+      error: error.message
+    });
   }
 });
+
 
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
@@ -53,6 +59,7 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
       },
