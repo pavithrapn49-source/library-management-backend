@@ -7,42 +7,44 @@ const router = express.Router();
 /* ================= REGISTER ================= */
 router.post("/register", async (req, res) => {
   try {
-    console.log(req.body); // 🔥 IMPORTANT DEBUG LINE
-
     const { name, email, password } = req.body;
 
+    // validation
     if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "All fields are required"
-      });
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const user = new User({
       name,
       email,
-      password
+      password,
+      isAdmin: false,
     });
 
     await user.save();
 
     res.status(201).json({
-      message: "User registered successfully"
+      message: "User registered successfully",
     });
-
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
   try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const user = await User.findOne({ email });
 
     if (!user || user.password !== password) {
@@ -56,6 +58,7 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({
+      message: "Login successful",
       token,
       user: {
         id: user._id,
