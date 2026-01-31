@@ -1,6 +1,6 @@
 import Book from "../models/book.js";
 import Borrow from "../models/borrow.js";
-import User from "../models/user.js";
+import User from "../models/User.js";
 
 export const adminStats = async (req, res) => {
   try {
