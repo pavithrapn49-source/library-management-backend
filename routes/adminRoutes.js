@@ -2,7 +2,7 @@ import express from "express";
 import protect from "../middleware/authMiddleware.js";
 import admin from "../middleware/adminMiddleware.js";
 import Book from "../models/book.js";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import { adminStats } from "../controllers/adminController.js";
 
 const router = express.Router();
