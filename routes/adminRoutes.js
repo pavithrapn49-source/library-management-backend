@@ -1,44 +1,14 @@
 import express from "express";
-import protect from "../middleware/authMiddleware.js";
-import admin from "../middleware/adminMiddleware.js";
-import Book from "../models/book.js";
-import User from "../models/User.js";
-import { adminStats } from "../controllers/adminController.js";
+import {
+  getDashboardStats,
+  getAllUsers,
+} from "../controllers/adminController.js";
+import { protect } from "../middleware/authMiddleware.js";
+import { authorize } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-/**
- * ADMIN DASHBOARD STATS
- * GET /api/admin/stats
- */
-router.get("/stats", protect, admin, adminStats);
-
-/**
- * GET ALL USERS
- * GET /api/admin/users
- */
-router.get("/users", protect, admin, async (req, res) => {
-  const users = await User.find({}).select("-password");
-  res.json(users);
-});
-
-/**
- * GET ALL BOOKS
- * GET /api/admin/books
- */
-router.get("/books", protect, admin, async (req, res) => {
-  const books = await Book.find({});
-  res.json(books);
-});
-
-/**
- * ADD BOOK
- * POST /api/admin/books
- */
-router.post("/books", protect, admin, async (req, res) => {
-  const { title, author, price } = req.body;
-  const book = await Book.create({ title, author, price });
-  res.status(201).json(book);
-});
+router.get("/dashboard", protect, authorize("admin"), getDashboardStats);
+router.get("/users", protect, authorize("admin"), getAllUsers);
 
 export default router;

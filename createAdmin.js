@@ -9,18 +9,18 @@ const run = async () => {
 
   const adminExists = await User.findOne({ email: "admin@test.com" });
   if (adminExists) {
-    console.log("⚠️ Admin already exists");
+    console.log("Admin already exists");
     process.exit();
   }
 
   await User.create({
     name: "Admin",
     email: "admin@test.com",
-    password: "1234",
-    isAdmin: true
+    password: "admin123",
+    role: "admin",
   });
 
-  console.log("✅ Admin user created successfully");
+  console.log("Admin created successfully");
   process.exit();
 };
 

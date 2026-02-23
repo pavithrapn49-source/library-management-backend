@@ -1,24 +1,21 @@
+import User from "../models/User.js";
 import Book from "../models/book.js";
 import Borrow from "../models/borrow.js";
-import User from "../models/User.js";
 
-export const adminStats = async (req, res) => {
-  try {
-    const totalBooks = await Book.countDocuments();
-    const borrowedBooks = await Borrow.countDocuments({ returned: false });
-    const activeUsers = await User.countDocuments();
+export const getDashboardStats = async (req, res) => {
+  const totalUsers = await User.countDocuments();
+  const totalBooks = await Book.countDocuments();
+  const totalBorrows = await Borrow.countDocuments();
 
-    res.json({
-      totalBooks,
-      borrowedBooks,
-      activeUsers,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  res.json({
+    totalUsers,
+    totalBooks,
+    totalBorrows,
+  });
 };
 
-   
-
-
+export const getAllUsers = async (req, res) => {
+  const users = await User.find().select("-password");
+  res.json(users);
+};
 
