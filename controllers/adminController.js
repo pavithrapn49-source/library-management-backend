@@ -1,5 +1,5 @@
 import User from "../models/user.js";
-import Book from "../models/Book.js";
+import Book from "../models/book.js";
 import Borrow from "../models/borrow.js";
 
 export const getDashboardStats = async (req, res) => {
