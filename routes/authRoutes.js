@@ -1,9 +1,27 @@
 import express from "express";
-import { register, login } from "../controllers/authController.js";
+
+import {
+  registerUser,
+  loginUser,
+  getAllUsers,
+  deleteUser
+} from "../controllers/authController.js";
+
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", registerUser);
+router.post("/login", loginUser);
+
+// ✅ ADMIN ONLY
+router.get("/users", protect, authorizeRoles("admin"), getAllUsers);
+
+router.delete(
+  "/users/:id",
+  protect,
+  authorizeRoles("admin"),
+  deleteUser
+);
 
 export default router;

@@ -1,14 +1,15 @@
 import express from "express";
-import {
-  getDashboardStats,
-  getAllUsers,
-} from "../controllers/adminController.js";
-import { protect } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/dashboard", protect, authorize("admin"), getDashboardStats);
-router.get("/users", protect, authorize("admin"), getAllUsers);
+router.get(
+  "/dashboard",
+  protect,
+  authorizeRoles("admin"),
+  (req, res) => {
+    res.json({ message: "Welcome Admin" });
+  }
+);
 
 export default router;
