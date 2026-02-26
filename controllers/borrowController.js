@@ -1,4 +1,4 @@
-import Borrow from "../models/Borrow.js";
+import Borrow from "../models/borrow.js";
 import Book from "../models/Book.js";
 
 export const borrowBook = async (req, res) => {
