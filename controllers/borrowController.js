@@ -71,3 +71,16 @@ export const returnBook = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getMyBorrows = async (req, res) => {
+  try {
+    const borrows = await Borrow.find({
+      user: req.user._id,
+      status: "borrowed"
+    }).populate("book");
+
+    res.status(200).json(borrows);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
