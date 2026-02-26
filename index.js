@@ -15,7 +15,10 @@ app.get("/", (req, res) => {
 });
 
 // CORS
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: ["http://localhost:5173", 
+    "https://react-library-management-amber.vercel.app"],
+  
+  credentials: true }));
 
 // JSON parser
 app.use(express.json());
