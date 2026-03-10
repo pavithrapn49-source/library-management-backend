@@ -79,7 +79,6 @@ export const deleteBook = async (req, res) => {
 // RESERVE BOOK-----
 
 export const reserveBook = async (req, res) => {
-
   try {
 
     const book = await Book.findById(req.params.id);
@@ -96,7 +95,7 @@ export const reserveBook = async (req, res) => {
       return res.status(400).json({ message: "Book already reserved" });
     }
 
-    book.reservedBy = req.user.id;
+    book.reservedBy = req.user._id;
 
     await book.save();
 
@@ -104,12 +103,11 @@ export const reserveBook = async (req, res) => {
 
   } catch (error) {
 
+    console.log(error);
     res.status(500).json({ message: "Reservation failed" });
 
   }
-
 };
-
 // RETURN BOOK
 
 export const returnBook = async (req, res) => {

@@ -63,7 +63,8 @@ export const returnBook = async (req, res) => {
 
   } catch (error) {
 
-    res.status(500).json({ message: "Return failed" });
+    console.log(error);
+    res.status(500).json({ message: "Error returning book" });
 
   }
 
