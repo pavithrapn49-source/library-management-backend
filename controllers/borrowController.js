@@ -40,34 +40,34 @@ export const borrowBook = async (req, res) => {
 
 // ================= RETURN BOOK =================
 export const returnBook = async (req, res) => {
+
   try {
-    const bookId = req.params.id;
-    const userId = req.user.id;
 
-    const borrow = await Borrow.findOne({
-      book: bookId,
-      user: userId,
-      status: "borrowed"
-    });
+    const borrow = await Borrow.findById(req.params.borrowId).populate("book");
 
-    if (!borrow)
+    if (!borrow) {
       return res.status(404).json({ message: "Borrow record not found" });
+    }
 
-    borrow.status = "returned";
-    await borrow.save();
+    const book = borrow.book;
 
-    const book = await Book.findById(bookId);
     book.borrowed = false;
+    book.borrowedBy = null;
+    book.dueDate = null;
+
     await book.save();
 
-    res.status(200).json({ message: "Book returned successfully" });
+    await Borrow.findByIdAndDelete(req.params.borrowId);
 
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Server error" });
+    res.json({ message: "Book returned successfully" });
+
+  } catch (error) {
+
+    res.status(500).json({ message: "Return failed" });
+
   }
-};
 
+};
 // ================= MY BORROWS =================
 export const getMyBorrows = async (req, res) => {
   try {

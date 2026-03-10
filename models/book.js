@@ -15,7 +15,13 @@ const bookSchema = new mongoose.Schema({
 
   borrowedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
-  dueDate: { type: Date }
+  dueDate: { type: Date },
+
+  reservedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  }
 
 }, { timestamps: true });
 

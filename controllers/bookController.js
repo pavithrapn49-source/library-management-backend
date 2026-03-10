@@ -74,3 +74,72 @@ export const deleteBook = async (req, res) => {
   }
 
 };
+
+// RESERVE BOOK-----
+
+export const reserveBook = async (req, res) => {
+
+  try {
+
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (!book.borrowed) {
+      return res.status(400).json({ message: "Book is available, no need to reserve" });
+    }
+
+    if (book.reservedBy) {
+      return res.status(400).json({ message: "Book already reserved" });
+    }
+
+    book.reservedBy = req.user.id;
+
+    await book.save();
+
+    res.json({ message: "Book reserved successfully" });
+
+  } catch (error) {
+
+    res.status(500).json({ message: "Reservation failed" });
+
+  }
+
+};
+
+// RETURN BOOK
+
+export const returnBook = async (req, res) => {
+
+  try {
+
+    const book = await Book.findById(req.params.id);
+
+    book.borrowed = false;
+    book.borrowedBy = null;
+    book.dueDate = null;
+
+
+    if (book.reservedBy) {
+
+      const reservedUser = await User.findById(book.reservedBy);
+
+      console.log(`Notify ${reservedUser.email} that the book is available`);
+
+      book.reservedBy = null;
+
+    }
+
+    await book.save();
+
+    res.json({ message: "Book returned successfully" });
+
+  } catch (error) {
+
+    res.status(500).json({ message: "Return failed" });
+
+  }
+
+};
