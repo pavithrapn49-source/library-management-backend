@@ -6,7 +6,7 @@ import { getMyBorrows } from "../controllers/borrowController.js";
 
 const router = express.Router();
 
-router.post("/:id", protect, authorizeRoles("member"), borrowBook);
-router.put("/return/:borrowId", protect, authorizeRoles("member"), returnBook);
+router.post("/:id", protect,borrowBook);
+router.put("/return/:borrowId", protect, returnBook);
 router.get("/my-borrows", protect, getMyBorrows);
 export default router;
