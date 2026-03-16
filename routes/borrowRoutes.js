@@ -1,12 +1,18 @@
 import express from "express";
-import { borrowBook, returnBook } from "../controllers/borrowController.js";
-import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
-import { getMyBorrows } from "../controllers/borrowController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
+import {
+  borrowBook,
+  returnBook,
+  getMyBorrows
+} from "../controllers/borrowController.js";
 
 const router = express.Router();
 
-router.post("/:id", protect,borrowBook);
+router.post("/:id", protect, borrowBook);
+
 router.put("/return/:borrowId", protect, returnBook);
+
 router.get("/my-borrows", protect, getMyBorrows);
+
 export default router;
