@@ -96,11 +96,15 @@ export const returnBook = async (req, res) => {
 // ================= MY BORROWS =================
 export const getMyBorrows = async (req, res) => {
   try {
-    // ✅ SHOW ONLY ACTIVE BORROWS
-    const borrows = await Borrow.find({
-      user: req.user.id,
-      status: "borrowed",
-    }).populate("book");
+  const borrows = await Borrow.find({
+  user: req.user.id,
+  status: "borrowed"
+}).populate("book");
+
+
+const validBorrows = borrows.filter(b => b.book !== null);
+
+res.json(validBorrows);
 
     res.json(borrows);
   } catch (error) {
