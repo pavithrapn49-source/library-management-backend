@@ -42,24 +42,34 @@ export const borrowBook = async (req, res) => {
 // ================= RETURN BOOK =================
 export const returnBook = async (req, res) => {
   try {
-    // ✅ FIX: use req.params.id
-    const borrow = await Borrow.findById(req.params.id).populate("book");
+
+    const borrow = await Borrow.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+      status: "borrowed"
+    }).populate("book");
 
     if (!borrow) {
       return res.status(404).json({
-        message: "Borrow record not found",
+        message: "Borrow record not found"
       });
     }
 
     if (borrow.status === "returned") {
       return res.status(400).json({
-        message: "Book already returned",
+        message: "Book already returned"
       });
     }
 
     const book = borrow.book;
 
-    // ✅ RESET BOOK
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found"
+      });
+    }
+
+    // ✅ Reset book
     book.borrowed = false;
     book.availabilityStatus = true;
     book.borrowedBy = null;
@@ -68,21 +78,21 @@ export const returnBook = async (req, res) => {
 
     await book.save();
 
-    // ✅ UPDATE BORROW
+    // ✅ Update borrow
     borrow.status = "returned";
     await borrow.save();
 
     res.json({
-      message: "Book returned successfully",
+      message: "Book returned successfully"
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Error returning book",
+      message: "Error returning book"
     });
   }
 };
-
 // ================= MY BORROWS =================
 export const getMyBorrows = async (req, res) => {
   try {
