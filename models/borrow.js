@@ -2,25 +2,24 @@ import mongoose from "mongoose";
 
 const borrowSchema = new mongoose.Schema(
   {
-    book: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Book",
-      required: true
-    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
-    status: {
-      type: String,
-      enum: ["borrowed", "returned"],
-      default: "borrowed"
+    book: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Book",
+      required: true,
     },
     dueDate: {
       type: Date,
-      required: true
-    }
+      required: true,
+    },
+    returned: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
