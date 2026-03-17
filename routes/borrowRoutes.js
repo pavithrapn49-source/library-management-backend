@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post("/:id", protect, borrowBook);
 
-router.put("/return/:borrowId", protect, returnBook);
+router.put("/return/:id", protect, returnBook);
 
 router.get("/my-borrows", protect, getMyBorrows);
 
