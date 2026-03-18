@@ -10,23 +10,35 @@ export const borrowBook = async (req, res) => {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    // check if already borrowed (ACTIVE only)
+    // ✅ Prevent same user borrowing again
     const existingBorrow = await Borrow.findOne({
       book: book._id,
+      user: req.user.id,
       returned: false,
     });
 
     if (existingBorrow) {
-      return res.status(400).json({ message: "Book already borrowed" });
+      return res.status(400).json({ message: "You already borrowed this book" });
     }
 
+    // ✅ Check availability
+    if (!book.available) {
+      return res.status(400).json({ message: "Book not available" });
+    }
+
+    // ✅ Create borrow
     const borrow = await Borrow.create({
       user: req.user.id,
       book: book._id,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
+    // ✅ Update book status
+    book.available = false;
+    await book.save();
+
     res.status(201).json(borrow);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -40,17 +52,20 @@ export const returnBook = async (req, res) => {
       return res.status(404).json({ message: "Borrow record not found" });
     }
 
-    // OPTIONAL: check ownership (safe way)
-    if (borrow.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
     if (borrow.returned) {
-      return res.status(400).json({ message: "Book already returned" });
+      return res.status(400).json({ message: "Already returned" });
     }
 
+    // ✅ mark returned
     borrow.returned = true;
     await borrow.save();
+
+    // ✅ make book available again
+    const book = await Book.findById(borrow.book);
+    if (book) {
+      book.available = true;
+      await book.save();
+    }
 
     res.json({ message: "Book returned successfully" });
 
