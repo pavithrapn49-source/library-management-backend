@@ -14,11 +14,16 @@ app.get("/", (req, res) => {
   res.send("Library Management Backend Running Successfully 🚀");
 });
 
-// CORS
-app.use(cors({ origin: ["http://localhost:5173", 
-    "https://react-library-management-amber.vercel.app"],
-  
-  credentials: true }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://react-library-management-d6ai3moi0.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
+app.options("*", cors());
 
 // JSON parser
 app.use(express.json());
