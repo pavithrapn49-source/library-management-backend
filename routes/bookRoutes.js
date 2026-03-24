@@ -11,7 +11,7 @@ import { reserveBook } from "../controllers/bookController.js";
 
 const router = express.Router();
 
-router.get("/", protect, getBooks);
+router.get("/", getBooks);
 
 router.post("/", protect, addBook);
 
