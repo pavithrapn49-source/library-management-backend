@@ -1,27 +1,43 @@
 import Book from "../models/book.js";
+import Borrow from "../models/borrow.js"; // ✅ FIXED
 
-// ================= ADD BOOK =================
+// ADD BOOK
 export const addBook = async (req, res) => {
   try {
     const book = new Book(req.body);
     await book.save();
     res.status(201).json(book);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: "Failed to add book" });
   }
 };
 
-// ================= GET BOOKS =================
+// GET BOOKS (CORRECT AVAILABILITY)
 export const getBooks = async (req, res) => {
   try {
     const books = await Book.find();
-    res.json(books);
-  } catch (error) {
+
+    const updatedBooks = await Promise.all(
+      books.map(async (book) => {
+        const activeBorrow = await Borrow.findOne({
+          book: book._id,
+          returned: false,
+        });
+
+        return {
+          ...book._doc,
+          available: !activeBorrow,
+        };
+      })
+    );
+
+    res.json(updatedBooks);
+  } catch {
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
 
-// ================= UPDATE BOOK =================
+// UPDATE
 export const updateBook = async (req, res) => {
   try {
     const updatedBook = await Book.findByIdAndUpdate(
@@ -30,32 +46,35 @@ export const updateBook = async (req, res) => {
       { new: true }
     );
     res.json(updatedBook);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: "Update failed" });
   }
 };
 
-// ================= DELETE BOOK =================
+// DELETE
 export const deleteBook = async (req, res) => {
   try {
     await Book.findByIdAndDelete(req.params.id);
     res.json({ message: "Book deleted successfully" });
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: "Delete failed" });
   }
 };
 
-// ================= RESERVE BOOK =================
+// RESERVE
 export const reserveBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
 
-    if (!book) {
+    if (!book)
       return res.status(404).json({ message: "Book not found" });
-    }
 
-    // ✅ Only allow reserve if borrowed
-    if (book.borrowed === false) {
+    const activeBorrow = await Borrow.findOne({
+      book: book._id,
+      returned: false,
+    });
+
+    if (!activeBorrow) {
       return res.status(400).json({
         message: "Book is available. You can borrow it.",
       });
@@ -67,7 +86,6 @@ export const reserveBook = async (req, res) => {
       });
     }
 
-    // ✅ prevent same user reserving again
     if (book.reservedBy?.toString() === req.user.id) {
       return res.status(400).json({
         message: "You already reserved this book",
@@ -75,12 +93,10 @@ export const reserveBook = async (req, res) => {
     }
 
     book.reservedBy = req.user.id;
-
     await book.save();
 
     res.json({ message: "Book reserved successfully" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

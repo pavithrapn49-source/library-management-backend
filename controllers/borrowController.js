@@ -6,75 +6,60 @@ export const borrowBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
 
-    if (!book) {
+    if (!book)
       return res.status(404).json({ message: "Book not found" });
-    }
 
-    // ✅ Prevent same user borrowing again
-    const existingBorrow = await Borrow.findOne({
+    // ❗ check active borrow (NOT book.available)
+    const activeBorrow = await Borrow.findOne({
       book: book._id,
-      user: req.user.id,
       returned: false,
     });
 
-    if (existingBorrow) {
-      return res.status(400).json({ message: "You already borrowed this book" });
+    if (activeBorrow) {
+      return res.status(400).json({
+        message: "Book already borrowed",
+      });
     }
 
-    // ✅ Check availability
-    if (!book.available) {
-      return res.status(400).json({ message: "Book not available" });
-    }
-
-    // ✅ Create borrow
     const borrow = await Borrow.create({
       user: req.user.id,
       book: book._id,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
-    // ✅ Update book status
-    book.available = false;
-    await book.save();
-
     res.status(201).json(borrow);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-// ================= RETURN BOOK =================
+
+// RETURN BOOK
 export const returnBook = async (req, res) => {
   try {
     const borrow = await Borrow.findById(req.params.id);
 
     if (!borrow) {
-      return res.status(404).json({ message: "Borrow record not found" });
+      return res.status(404).json({
+        message: "Borrow record not found",
+      });
     }
 
     if (borrow.returned) {
-      return res.status(400).json({ message: "Already returned" });
+      return res.status(400).json({
+        message: "Already returned",
+      });
     }
 
-    // ✅ mark returned
     borrow.returned = true;
     await borrow.save();
 
-    // ✅ make book available again
-    const book = await Book.findById(borrow.book);
-    if (book) {
-      book.available = true;
-      await book.save();
-    }
-
     res.json({ message: "Book returned successfully" });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-// ================= MY BORROWS =================
 
+// MY BORROWS
 export const getMyBorrows = async (req, res) => {
   try {
     const borrows = await Borrow.find({
