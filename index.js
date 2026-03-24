@@ -17,7 +17,7 @@ app.get("/", (req, res) => {
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://react-library-management-d6ai3moi0.vercel.app"
+    "https://react-library-management-amber.vercel.app/"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
