@@ -1,10 +1,13 @@
+// src/models/Book.js
 import mongoose from "mongoose";
 
-const bookSchema = mongoose.Schema({
-  title: String,
-  author: String,
-  genre: String,
-  available: { type: Boolean, default: true }
+const bookSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  author: { type: String, required: true },
+  genre: { type: String },
+  available: { type: Boolean, default: true },
+  reservedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // optional: track who reserved
 });
 
-export default mongoose.model("Book", bookSchema);
+const Book = mongoose.model("Book", bookSchema);
+export default Book;
