@@ -1,4 +1,3 @@
-// src/models/Book.js
 import mongoose from "mongoose";
 
 const bookSchema = new mongoose.Schema({
