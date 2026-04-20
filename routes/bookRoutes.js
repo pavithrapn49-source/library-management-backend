@@ -1,24 +1,16 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
-
-import {
-  getBooks,
-  addBook,
-  updateBook,
-  deleteBook
-} from "../controllers/bookController.js";
-import { reserveBook } from "../controllers/bookController.js";
+import { getBooks, addBook, reserveBook } from "../controllers/bookController.js";
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getBooks);
+// Get all books
+router.get("/", protect, getBooks);
 
-router.post("/", protect, addBook);
+// Add book (Admin only)
+router.post("/add", protect, authorizeRoles("admin"), addBook);
 
-router.put("/:id", protect, updateBook);  // update book
-
-router.delete("/:id", protect, deleteBook);
-
+// Reserve book
 router.post("/reserve/:id", protect, reserveBook);
 
 export default router;
