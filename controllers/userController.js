@@ -1,13 +1,17 @@
 import User from "../models/user.js";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
+
+// Generate Token
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
 // ================= REGISTER =================
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Check existing user
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -16,30 +20,22 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
     const newUser = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password,
       role,
     });
 
     res.status(201).json({
-      message: "User registered successfully",
+      message: "Registered successfully",
+      token: generateToken(newUser._id),
       user: {
         _id: newUser._id,
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
       },
-      token: jwt.sign(
-        { id: newUser._id },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      ),
     });
 
   } catch (error) {
@@ -56,29 +52,15 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) {
+    if (!user || !(await user.matchPassword(password))) {
       return res.status(400).json({
         message: "Invalid credentials",
       });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
-    }
-
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
 
     res.json({
       message: "Login successful",
-      token,
+      token: generateToken(user._id),
       user: {
         _id: user._id,
         name: user.name,
@@ -94,13 +76,6 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// ================= LOGOUT =================
-export const logoutUser = async (req, res) => {
-  res.json({
-    message: "Logout successful",
-  });
-};
-
 // ================= PROFILE =================
 export const getProfile = async (req, res) => {
   try {
@@ -113,4 +88,11 @@ export const getProfile = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+// ================= LOGOUT =================
+export const logoutUser = async (req, res) => {
+  res.json({
+    message: "Logout successful",
+  });
 };
