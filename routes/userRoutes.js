@@ -7,17 +7,19 @@ import {
   deleteUser
 } from "../controllers/userController.js";
 
-import { protect } from "../middleware/authMiddleware.js";
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/* Public Routes */
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 
+/* Logged-in User */
 router.get("/me", protect, getProfile);
 
-/* ADMIN */
-router.get("/", protect, getAllUsers);
-router.delete("/:id", protect, deleteUser);
+/* Admin Only */
+router.get("/", protect, authorizeRoles("admin"), getAllUsers);
+router.delete("/:id", protect, authorizeRoles("admin"), deleteUser);
 
 export default router;
