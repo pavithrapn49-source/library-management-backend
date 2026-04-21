@@ -1,69 +1,91 @@
 import Review from "../models/Review.js";
 
-// Add review
+/* ================= ADD REVIEW ================= */
 export const addReview = async (req, res) => {
   try {
     const { bookId, rating, comment } = req.body;
+
     const review = await Review.create({
       user: req.user._id,
       book: bookId,
       rating,
       comment
     });
-    res.json(review);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    res.status(201).json(review);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get reviews for a book
+/* ================= GET REVIEWS BY BOOK ================= */
 export const getReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ book: req.params.bookId })
-      .populate("user", "name");
+    const reviews = await Review.find({
+      book: req.params.bookId
+    }).populate("user", "name");
+
     res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get reviews written by logged-in user
+/* ================= GET MY REVIEWS ================= */
 export const getMyReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ user: req.user._id })
-      .populate("book", "title author");
+    const reviews = await Review.find({
+      user: req.user._id
+    }).populate("book", "title author");
+
     res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Update review
+/* ================= UPDATE REVIEW ================= */
 export const updateReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
-    if (!review || review.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized" });
+
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
     }
+
+    if (review.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
     review.rating = req.body.rating || review.rating;
     review.comment = req.body.comment || review.comment;
+
     await review.save();
+
     res.json(review);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Delete review
+/* ================= DELETE REVIEW ================= */
 export const deleteReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
-    if (!review || review.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized" });
+
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
     }
+
+    if (review.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
     await review.deleteOne();
-    res.json({ message: "Review deleted" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    res.json({ message: "Review deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

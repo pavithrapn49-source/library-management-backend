@@ -4,25 +4,27 @@ import {
   getReviews,
   getMyReviews,
   updateReview,
-  deleteReview
+  deleteReview,
 } from "../controllers/reviewController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Add a review
-router.post("/add", protect, addReview);
-
-// Get reviews for a specific book
-router.get("/:bookId", protect, getReviews);
-
-// Get reviews written by the logged-in user
+/* ================= MY REVIEWS ================= */
+/* keep this BEFORE /:bookId */
 router.get("/my", protect, getMyReviews);
 
-// Update a review
+/* ================= ADD REVIEW ================= */
+router.post("/add", protect, addReview);
+
+/* ================= GET REVIEWS OF BOOK ================= */
+router.get("/:bookId", protect, getReviews);
+
+/* ================= UPDATE REVIEW ================= */
 router.put("/:id", protect, updateReview);
 
-// Delete a review
+/* ================= DELETE REVIEW ================= */
 router.delete("/:id", protect, deleteReview);
 
 export default router;
