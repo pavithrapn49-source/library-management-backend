@@ -52,7 +52,15 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user || !(await user.matchPassword(password))) {
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    const isMatch = await user.matchPassword(password);
+
+    if (!isMatch) {
       return res.status(400).json({
         message: "Invalid credentials",
       });
@@ -75,7 +83,6 @@ export const loginUser = async (req, res) => {
     });
   }
 };
-
 // ================= PROFILE =================
 export const getProfile = async (req, res) => {
   try {
