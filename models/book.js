@@ -1,12 +1,34 @@
 import mongoose from "mongoose";
 
 const bookSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  author: { type: String, required: true },
-  genre: { type: String },
-  available: { type: Boolean, default: true },
-  reservedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // optional: track who reserved
+  title: String,
+  author: String,
+  genre: String,
+  price: Number,
+
+  available: {
+    type: Boolean,
+    default: true,
+  },
+
+  borrowedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+
+  borrowedAt: Date,
+  returnedAt: Date,
+
+  reservedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+
+  reservedAt: Date,
 });
 
 const Book = mongoose.model("Book", bookSchema);
+
 export default Book;
