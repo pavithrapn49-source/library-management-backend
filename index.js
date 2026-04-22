@@ -20,7 +20,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://react-library-management-frze.vercel.app/",
+      "https://react-library-management-frze.vercel.app",
     ],
     credentials: true,
   })
