@@ -20,7 +20,7 @@ app.use(
     origin: function (origin, callback) {
       const allowedOrigins = [
         "http://localhost:5173",
-        "https://react-library-management-frze.vercel.app"
+        "https://react-library-management-gzi1.vercel.app",
       ];
 
       // allow requests with no origin (mobile apps / postman)
