@@ -15,16 +15,30 @@ const app = express();
 
 /* ================= MIDDLEWARE ================= */
 app.use(express.json());
-
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://react-library-management-frze.vercel.app",
-    ],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "https://react-library-management-frze.vercel.app"
+      ];
+
+      // allow requests with no origin (mobile apps / postman)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
+
+// IMPORTANT: handle preflight requests
+app.options("*", cors());
 
 /* ================= TEST ROUTE ================= */
 app.get("/", (req, res) => {
