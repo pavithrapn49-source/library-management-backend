@@ -7,74 +7,70 @@ import {
   getBorrowHistory,
   getMyDues,
   payFine,
-  getAllTransactions
+  getAllTransactions,
 } from "../controllers/transactionController.js";
 
 import {
   protect,
-  authorizeRoles
+  authorizeRoles,
 } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* =====================================
-   MEMBER ROUTES
-===================================== */
+/* ================= MEMBER ROUTES ================= */
 
-// Borrow book
+// Borrow Book
 router.post(
   "/borrow/:id",
   protect,
   borrowBook
 );
 
-// Return by transaction id
+// Return Book
 router.post(
   "/return/:id",
   protect,
   returnBook
 );
 
-// Renew borrowed book
+// Renew Book
 router.post(
   "/renew/:id",
   protect,
   renewBook
 );
 
-// My active borrows
+// My Borrowed Books
 router.get(
   "/my-borrows",
   protect,
   getMyBorrows
 );
 
-// My full history
+// My History
 router.get(
   "/history",
   protect,
   getBorrowHistory
 );
 
-// My unpaid dues
+// My Pending Fines
 router.get(
   "/dues",
   protect,
   getMyDues
 );
 
-// Pay fine
+// Pay Fine
 router.post(
   "/pay-fine/:id",
   protect,
   payFine
 );
 
-/* =====================================
-   ADMIN ROUTES
-===================================== */
+/* ================= ADMIN ROUTES ================= */
 
-// All transactions
+// All Transactions
 router.get(
   "/all",
   protect,
