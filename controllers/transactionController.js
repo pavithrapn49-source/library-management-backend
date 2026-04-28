@@ -1,24 +1,21 @@
 import Transaction from "../models/Transaction.js";
-import Book from "../models/book.js";
+import Book from "../models/Book.js";
 
-/* ================= BORROW BOOK ================= */
+/* ================= BORROW ================= */
 export const borrowBook = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(req.params.bookId);
 
     if (!book) {
-      return res.status(404).json({
-        message: "Book not found",
-      });
+      return res.status(404).json({ message: "Book not found" });
     }
 
-    if (!book.available) {
+    if (book.availableCopies <= 0) {
       return res.status(400).json({
-        message: "Book not available",
+        message: "Book unavailable. Please reserve it.",
       });
     }
 
-    // Prevent duplicate active borrow
     const alreadyBorrowed = await Transaction.findOne({
       user: req.user._id,
       book: book._id,
@@ -27,38 +24,33 @@ export const borrowBook = async (req, res) => {
 
     if (alreadyBorrowed) {
       return res.status(400).json({
-        message: "You already borrowed this book",
+        message: "Already borrowed",
       });
     }
 
     const transaction = await Transaction.create({
       user: req.user._id,
       book: book._id,
-      borrowDate: new Date(),
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: "borrowed",
-      fine: 0,
-      finePaid: false,
     });
 
-    book.available = false;
+    book.availableCopies -= 1;
     await book.save();
 
     res.status(201).json({
       message: "Book borrowed successfully",
       transaction,
     });
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ================= RETURN BOOK ================= */
+/* ================= RETURN ================= */
 export const returnBook = async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
+    const transaction = await Transaction.findById(
+      req.params.transactionId
+    );
 
     if (!transaction) {
       return res.status(404).json({
@@ -66,21 +58,30 @@ export const returnBook = async (req, res) => {
       });
     }
 
+    if (
+      transaction.user.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        message: "Unauthorized",
+      });
+    }
+
     if (transaction.status === "returned") {
       return res.status(400).json({
-        message: "Book already returned",
+        message: "Already returned",
       });
     }
 
     transaction.status = "returned";
     transaction.returnDate = new Date();
 
-    // Fine calculation
     const today = new Date();
 
     if (today > transaction.dueDate) {
       const lateDays = Math.ceil(
-        (today - transaction.dueDate) / (1000 * 60 * 60 * 24)
+        (today - transaction.dueDate) /
+          (1000 * 60 * 60 * 24)
       );
 
       transaction.fine = lateDays * 10;
@@ -91,23 +92,20 @@ export const returnBook = async (req, res) => {
     const book = await Book.findById(transaction.book);
 
     if (book) {
-      book.available = true;
+      book.availableCopies += 1;
       await book.save();
     }
 
     res.json({
-      message: "Book returned successfully",
+      message: "Returned successfully",
       fine: transaction.fine,
-      transaction,
     });
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ================= MY BORROWED BOOKS ================= */
+/* ================= MY BORROWS ================= */
 export const getMyBorrows = async (req, res) => {
   try {
     const borrows = await Transaction.find({
@@ -118,10 +116,8 @@ export const getMyBorrows = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(borrows);
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -135,36 +131,68 @@ export const getBorrowHistory = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(history);
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ================= MY DUES ================= */
+/* ================= DUES ================= */
 export const getMyDues = async (req, res) => {
   try {
     const dues = await Transaction.find({
       user: req.user._id,
       fine: { $gt: 0 },
       finePaid: false,
-    })
-      .populate("book")
-      .sort({ createdAt: -1 });
+    }).populate("book");
 
     res.json(dues);
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
 /* ================= PAY FINE ================= */
 export const payFine = async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
+    const transaction = await Transaction.findById(
+      req.params.transactionId
+    );
+
+    if (!transaction)
+      return res.status(404).json({
+        message: "Not found",
+      });
+
+    transaction.finePaid = true;
+    await transaction.save();
+
+    res.json({
+      message: "Fine paid successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================= ADMIN ================= */
+export const getAllTransactions = async (req, res) => {
+  try {
+    const data = await Transaction.find()
+      .populate("user", "name email")
+      .populate("book", "title author")
+      .sort({ createdAt: -1 });
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const renewBook = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(
+      req.params.transactionId
+    );
 
     if (!transaction) {
       return res.status(404).json({
@@ -172,44 +200,42 @@ export const payFine = async (req, res) => {
       });
     }
 
-    if (transaction.fine <= 0) {
-      return res.status(400).json({
-        message: "No fine to pay",
+    if (
+      transaction.user.toString() !==
+      req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "Unauthorized",
       });
     }
 
-    if (transaction.finePaid) {
+    if (transaction.status !== "borrowed") {
       return res.status(400).json({
-        message: "Fine already paid",
+        message: "Only active borrowed books can be renewed",
       });
     }
 
-    transaction.finePaid = true;
+    if (transaction.renewCount >= 1) {
+      return res.status(400).json({
+        message: "Renew limit reached",
+      });
+    }
+
+    const newDueDate = new Date(transaction.dueDate);
+    newDueDate.setDate(newDueDate.getDate() + 7);
+
+    transaction.dueDate = newDueDate;
+    transaction.renewCount += 1;
+
     await transaction.save();
 
     res.json({
-      message: "Fine paid successfully",
-      transaction,
+      message: "Book renewed successfully",
+      dueDate: transaction.dueDate,
     });
-  } catch (err) {
+  } catch (error) {
     res.status(500).json({
-      message: err.message,
-    });
-  }
-};
-
-/* ================= ADMIN ALL TRANSACTIONS ================= */
-export const getAllTransactions = async (req, res) => {
-  try {
-    const transactions = await Transaction.find()
-      .populate("user", "name email role")
-      .populate("book", "title author")
-      .sort({ createdAt: -1 });
-
-    res.json(transactions);
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
+      message: error.message,
     });
   }
 };
