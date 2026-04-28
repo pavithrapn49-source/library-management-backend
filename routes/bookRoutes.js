@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   getBooks,
   getBookById,
@@ -6,7 +7,8 @@ import {
   updateBook,
   deleteBook,
   reserveBook,
-  getReservedBooks
+  getReservedBooks,
+  claimReservedBook
 } from "../controllers/bookController.js";
 
 import {
@@ -16,13 +18,12 @@ import {
 
 const router = express.Router();
 
-/* GET ALL BOOKS */
+/* ================= BOOKS ================= */
+
 router.get("/", protect, getBooks);
 
-/* GET SINGLE BOOK */
 router.get("/:id", protect, getBookById);
 
-/* ADD BOOK */
 router.post(
   "/",
   protect,
@@ -30,7 +31,6 @@ router.post(
   addBook
 );
 
-/* UPDATE BOOK */
 router.put(
   "/:id",
   protect,
@@ -38,7 +38,6 @@ router.put(
   updateBook
 );
 
-/* DELETE BOOK */
 router.delete(
   "/:id",
   protect,
@@ -46,14 +45,20 @@ router.delete(
   deleteBook
 );
 
-/* RESERVE */
+/* ================= MEMBER ================= */
+
 router.post(
   "/reserve/:id",
   protect,
   reserveBook
 );
 
-/* MY RESERVED */
+router.post(
+  "/claim/:id",
+  protect,
+  claimReservedBook
+);
+
 router.get(
   "/reserved/my",
   protect,

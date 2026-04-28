@@ -56,6 +56,15 @@ const bookSchema = new mongoose.Schema(
       default: null
     },
 
+    claimableBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  default: null
+},
+claimExpiresAt: {
+  type: Date,
+  default: null
+},
     returnedAt: {
       type: Date,
       default: null

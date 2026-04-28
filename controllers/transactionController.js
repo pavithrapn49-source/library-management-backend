@@ -50,6 +50,15 @@ export const borrowBook = async (req, res) => {
     book.borrowedBy = userId;
     book.borrowedAt = new Date();
 
+    /* remove reservation if same user claims it */
+    if (
+      book.claimableBy &&
+      book.claimableBy.toString() === userId.toString()
+    ) {
+      book.claimableBy = null;
+      book.claimExpiresAt = null;
+    }
+
     if (
       book.reservedBy &&
       book.reservedBy.toString() === userId.toString()
@@ -113,6 +122,19 @@ export const returnBook = async (req, res) => {
       book.borrowedAt = null;
       book.returnedAt = new Date();
 
+      /* manual claim for reserved user */
+      if (book.reservedBy) {
+        book.claimableBy = book.reservedBy;
+
+        const expire = new Date();
+        expire.setDate(expire.getDate() + 1);
+
+        book.claimExpiresAt = expire;
+
+        book.reservedBy = null;
+        book.reservedAt = null;
+      }
+
       await book.save();
     }
 
@@ -140,7 +162,7 @@ export const renewBook = async (req, res) => {
 
     if (transaction.status !== "borrowed") {
       return res.status(400).json({
-        message: "Only borrowed books can be renewed",
+        message: "Only borrowed books can renew",
       });
     }
 
@@ -162,7 +184,7 @@ export const renewBook = async (req, res) => {
   }
 };
 
-/* ================= MY BORROWED BOOKS ================= */
+/* ================= MY BORROWS ================= */
 export const getMyBorrows = async (req, res) => {
   try {
     const borrows = await Transaction.find({
@@ -180,7 +202,7 @@ export const getMyBorrows = async (req, res) => {
   }
 };
 
-/* ================= BORROW HISTORY ================= */
+/* ================= HISTORY ================= */
 export const getBorrowHistory = async (req, res) => {
   try {
     const history = await Transaction.find({
@@ -197,7 +219,7 @@ export const getBorrowHistory = async (req, res) => {
   }
 };
 
-/* ================= MY DUES ================= */
+/* ================= DUES ================= */
 export const getMyDues = async (req, res) => {
   try {
     const dues = await Transaction.find({
@@ -239,7 +261,7 @@ export const payFine = async (req, res) => {
   }
 };
 
-/* ================= ADMIN ALL TRANSACTIONS ================= */
+/* ================= ADMIN ================= */
 export const getAllTransactions = async (req, res) => {
   try {
     const transactions = await Transaction.find()

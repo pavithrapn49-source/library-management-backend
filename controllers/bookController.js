@@ -201,12 +201,72 @@ export const reserveBook = async (
   }
 };
 
+/* ================= CLAIM RESERVED BOOK ================= */
+export const claimReservedBook =
+  async (req, res) => {
+    try {
+      const book = await Book.findById(
+        req.params.id
+      );
+
+      if (!book) {
+        return res.status(404).json({
+          success: false,
+          message: "Book not found",
+        });
+      }
+
+      if (
+        !book.claimableBy ||
+        book.claimableBy.toString() !==
+          req.user._id.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You cannot claim this book",
+        });
+      }
+
+      book.available = false;
+      book.availableCopies = 0;
+      book.borrowedBy = req.user._id;
+      book.borrowedAt = new Date();
+
+      book.claimableBy = null;
+      book.claimExpiresAt = null;
+
+      await book.save();
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Book claimed successfully",
+        book,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
 /* ================= MY RESERVED BOOKS ================= */
 export const getReservedBooks =
   async (req, res) => {
     try {
       const books = await Book.find({
-        reservedBy: req.user._id,
+        $or: [
+          {
+            reservedBy:
+              req.user._id,
+          },
+          {
+            claimableBy:
+              req.user._id,
+          },
+        ],
       }).sort({
         reservedAt: -1,
       });
