@@ -3,27 +3,46 @@ import Book from "../models/book.js";
 /* ================= GET ALL BOOKS ================= */
 export const getBooks = async (req, res) => {
   try {
-    const books = await Book.find().sort({ createdAt: -1 });
-    res.json(books);
+    const books = await Book.find().sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      count: books.length,
+      books,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 /* ================= GET SINGLE BOOK ================= */
 export const getBookById = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(
+      req.params.id
+    );
 
     if (!book) {
       return res.status(404).json({
-        message: "Book not found"
+        success: false,
+        message: "Book not found",
       });
     }
 
-    res.json(book);
+    res.status(200).json({
+      success: true,
+      book,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -34,23 +53,35 @@ export const addBook = async (req, res) => {
       title,
       author,
       genre,
-      price
+      price,
+      isbn,
+      totalCopies,
     } = req.body;
+
+    const copies =
+      Number(totalCopies) || 1;
 
     const book = await Book.create({
       title,
       author,
       genre,
       price,
-      available: true
+      isbn,
+      totalCopies: copies,
+      availableCopies: copies,
+      available: true,
     });
 
     res.status(201).json({
+      success: true,
       message: "Book added successfully",
-      book
+      book,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -60,68 +91,94 @@ export const updateBook = async (req, res) => {
     const book = await Book.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      {
+        new: true,
+        runValidators: true,
+      }
     );
 
     if (!book) {
       return res.status(404).json({
-        message: "Book not found"
+        success: false,
+        message: "Book not found",
       });
     }
 
-    res.json({
+    res.status(200).json({
+      success: true,
       message: "Book updated",
-      book
+      book,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 /* ================= DELETE BOOK ================= */
 export const deleteBook = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(
+      req.params.id
+    );
 
     if (!book) {
       return res.status(404).json({
-        message: "Book not found"
+        success: false,
+        message: "Book not found",
       });
     }
 
     await book.deleteOne();
 
-    res.json({
-      message: "Book deleted"
+    res.status(200).json({
+      success: true,
+      message: "Book deleted",
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 /* ================= RESERVE BOOK ================= */
-export const reserveBook = async (req, res) => {
+export const reserveBook = async (
+  req,
+  res
+) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(
+      req.params.id
+    );
 
     if (!book) {
       return res.status(404).json({
-        message: "Book not found"
+        success: false,
+        message: "Book not found",
       });
     }
 
-    if (book.available) {
+    if (book.availableCopies > 0) {
       return res.status(400).json({
-        message: "Book is available. Borrow directly."
+        success: false,
+        message:
+          "Book available. Borrow directly.",
       });
     }
 
     if (
       book.reservedBy &&
-      book.reservedBy.toString() !== req.user._id.toString()
+      book.reservedBy.toString() !==
+        req.user._id.toString()
     ) {
       return res.status(400).json({
-        message: "Already reserved by another user"
+        success: false,
+        message:
+          "Already reserved by another user",
       });
     }
 
@@ -130,24 +187,38 @@ export const reserveBook = async (req, res) => {
 
     await book.save();
 
-    res.json({
-      message: "Book reserved successfully",
-      book
+    res.status(200).json({
+      success: true,
+      message:
+        "Book reserved successfully",
+      book,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 /* ================= MY RESERVED BOOKS ================= */
-export const getReservedBooks = async (req, res) => {
-  try {
-    const books = await Book.find({
-      reservedBy: req.user._id
-    });
+export const getReservedBooks =
+  async (req, res) => {
+    try {
+      const books = await Book.find({
+        reservedBy: req.user._id,
+      }).sort({
+        reservedAt: -1,
+      });
 
-    res.json(books);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+      res.status(200).json({
+        success: true,
+        books,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
