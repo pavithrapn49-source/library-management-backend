@@ -2,6 +2,7 @@ import express from "express";
 import {
   borrowBook,
   returnBook,
+  renewBook,
   getMyBorrows,
   getBorrowHistory,
   getMyDues,
@@ -16,16 +17,64 @@ import {
 
 const router = express.Router();
 
-router.post("/borrow/:id", protect, borrowBook);
-router.post("/return/:id", protect, returnBook);
+/* =====================================
+   MEMBER ROUTES
+===================================== */
 
-router.get("/my-borrows", protect, getMyBorrows);
-router.get("/history", protect, getBorrowHistory);
-router.get("/dues", protect, getMyDues);
+// Borrow book
+router.post(
+  "/borrow/:id",
+  protect,
+  borrowBook
+);
 
-router.post("/pay-fine/:id", protect, payFine);
+// Return by transaction id
+router.post(
+  "/return/:id",
+  protect,
+  returnBook
+);
 
-/* ADMIN */
+// Renew borrowed book
+router.post(
+  "/renew/:id",
+  protect,
+  renewBook
+);
+
+// My active borrows
+router.get(
+  "/my-borrows",
+  protect,
+  getMyBorrows
+);
+
+// My full history
+router.get(
+  "/history",
+  protect,
+  getBorrowHistory
+);
+
+// My unpaid dues
+router.get(
+  "/dues",
+  protect,
+  getMyDues
+);
+
+// Pay fine
+router.post(
+  "/pay-fine/:id",
+  protect,
+  payFine
+);
+
+/* =====================================
+   ADMIN ROUTES
+===================================== */
+
+// All transactions
 router.get(
   "/all",
   protect,

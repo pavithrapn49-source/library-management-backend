@@ -1,16 +1,29 @@
 import User from "../models/user.js";
 import jwt from "jsonwebtoken";
 
-// Generate Token
+/* ================= TOKEN ================= */
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "1d",
   });
 
-// ================= REGISTER =================
+/* ================= REGISTER ================= */
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+
+    /* VALIDATION */
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
 
     const existingUser = await User.findOne({ email });
 
@@ -20,11 +33,12 @@ export const registerUser = async (req, res) => {
       });
     }
 
+    /* FORCE ROLE = MEMBER */
     const newUser = await User.create({
       name,
       email,
       password,
-      role,
+      role: "member",
     });
 
     res.status(201).json({
@@ -45,10 +59,16 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// ================= LOGIN =================
+/* ================= LOGIN ================= */
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password required",
+      });
+    }
 
     const user = await User.findOne({ email });
 
@@ -83,10 +103,11 @@ export const loginUser = async (req, res) => {
     });
   }
 };
-// ================= PROFILE =================
+
+/* ================= PROFILE ================= */
 export const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
 
     res.json(user);
 
@@ -97,31 +118,73 @@ export const getProfile = async (req, res) => {
   }
 };
 
-// ================= LOGOUT =================
-export const logoutUser = async (req, res) => {
-  res.json({
-    message: "Logout successful",
-  });
-};
-
+/* ================= GET ALL USERS ================= */
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
+
     res.json(users);
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
+/* ================= DELETE USER ================= */
 export const deleteUser = async (req, res) => {
   try {
+    /* Prevent self delete */
+    if (req.user._id.toString() === req.params.id) {
+      return res.status(400).json({
+        message: "You cannot delete yourself",
+      });
+    }
+
     await User.findByIdAndDelete(req.params.id);
 
     res.json({
-      message: "User deleted successfully"
+      message: "User deleted successfully",
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+/* ================= UPDATE ROLE (NEW FEATURE) ================= */
+export const updateUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!["member", "librarian", "admin"].includes(role)) {
+      return res.status(400).json({
+        message: "Invalid role",
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({
+      message: "Role updated successfully",
+      user,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

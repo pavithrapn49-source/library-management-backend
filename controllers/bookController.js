@@ -1,175 +1,152 @@
 import Book from "../models/book.js";
 
-/* =====================================
-   GET BOOKS (Search + Filter + Sort + Pagination)
-===================================== */
+/* ================= GET ALL BOOKS ================= */
 export const getBooks = async (req, res) => {
   try {
-    const {
-      search = "",
-      author = "",
-      genre = "",
-      available = "",
-      sort = "",
-      page = 1,
-      limit = 6,
-    } = req.query;
-
-    let query = {};
-
-    if (search) {
-      query.title = { $regex: search, $options: "i" };
-    }
-
-    if (author) {
-      query.author = { $regex: author, $options: "i" };
-    }
-
-    if (genre) {
-      query.genre = { $regex: genre, $options: "i" };
-    }
-
-    if (available === "true") {
-      query.available = true;
-    }
-
-    if (available === "false") {
-      query.available = false;
-    }
-
-    let sortOption = {};
-
-    if (sort === "az") sortOption.title = 1;
-    if (sort === "za") sortOption.title = -1;
-    if (sort === "latest") sortOption.createdAt = -1;
-
-    const skip = (page - 1) * limit;
-
-    const books = await Book.find(query)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await Book.countDocuments(query);
-
-    res.status(200).json({
-      books,
-      totalPages: Math.ceil(total / limit),
-      currentPage: Number(page),
-      totalBooks: total,
-    });
+    const books = await Book.find().sort({ createdAt: -1 });
+    res.json(books);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-/* =====================================
-   ADD BOOK
-===================================== */
+/* ================= GET SINGLE BOOK ================= */
+export const getBookById = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found"
+      });
+    }
+
+    res.json(book);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================= ADD BOOK ================= */
 export const addBook = async (req, res) => {
   try {
-    const { title, author, genre, price } = req.body;
+    const {
+      title,
+      author,
+      genre,
+      price
+    } = req.body;
 
     const book = await Book.create({
       title,
       author,
       genre,
       price,
-      available: true,
-      borrowedBy: null,
-      borrowedAt: null,
-      returnedAt: null,
+      available: true
     });
 
-    res.status(201).json(book);
+    res.status(201).json({
+      message: "Book added successfully",
+      book
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-/* =====================================
-   BORROW BOOK (NEW - IMPORTANT)
-===================================== */
-export const borrowBook = async (req, res) => {
+/* ================= UPDATE BOOK ================= */
+export const updateBook = async (req, res) => {
+  try {
+    const book = await Book.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found"
+      });
+    }
+
+    res.json({
+      message: "Book updated",
+      book
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================= DELETE BOOK ================= */
+export const deleteBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
 
     if (!book) {
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({
+        message: "Book not found"
+      });
     }
 
-    if (!book.available) {
-      return res.status(400).json({ message: "Book already borrowed" });
-    }
+    await book.deleteOne();
 
-    book.available = false;
-    book.borrowedBy = req.user.id;
-    book.borrowedAt = new Date();
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Book borrowed successfully",
-      book,
+    res.json({
+      message: "Book deleted"
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-/* =====================================
-   RETURN BOOK (FIXED)
-===================================== */
-export const returnBook = async (req, res) => {
-  try {
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({ message: "Book not found" });
-    }
-
-    book.available = true;
-    book.borrowedBy = null;
-    book.returnedAt = new Date();
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Book returned successfully",
-      book,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/* =====================================
-   RESERVE BOOK (FIXED - REAL VERSION)
-===================================== */
+/* ================= RESERVE BOOK ================= */
 export const reserveBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
 
     if (!book) {
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({
+        message: "Book not found"
+      });
     }
 
     if (book.available) {
       return res.status(400).json({
-        message: "Book is available. You can borrow directly.",
+        message: "Book is available. Borrow directly."
       });
     }
 
-    // real reservation logic
-    book.reservedBy = req.user.id;
+    if (
+      book.reservedBy &&
+      book.reservedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(400).json({
+        message: "Already reserved by another user"
+      });
+    }
+
+    book.reservedBy = req.user._id;
     book.reservedAt = new Date();
 
     await book.save();
 
-    res.status(200).json({
-      message: `Book "${book.title}" reserved successfully`,
-      book,
+    res.json({
+      message: "Book reserved successfully",
+      book
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================= MY RESERVED BOOKS ================= */
+export const getReservedBooks = async (req, res) => {
+  try {
+    const books = await Book.find({
+      reservedBy: req.user._id
+    });
+
+    res.json(books);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

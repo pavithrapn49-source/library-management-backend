@@ -1,51 +1,63 @@
 import express from "express";
 import {
   getBooks,
+  getBookById,
   addBook,
+  updateBook,
+  deleteBook,
   reserveBook,
+  getReservedBooks
 } from "../controllers/bookController.js";
 
 import {
   protect,
-  authorizeRoles,
+  authorizeRoles
 } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* =====================================
-   GET ALL BOOKS
-   Protected Route
-   Supports:
-   search
-   author
-   genre
-   available
-   sort
-   page
-===================================== */
+/* GET ALL BOOKS */
 router.get("/", protect, getBooks);
 
-/* If frontend uses /all */
-router.get("/all", protect, getBooks);
+/* GET SINGLE BOOK */
+router.get("/:id", protect, getBookById);
 
-/* =====================================
-   ADD BOOK
-   Admin Only
-===================================== */
+/* ADD BOOK */
 router.post(
-  "/add",
+  "/",
   protect,
   authorizeRoles("admin"),
   addBook
 );
 
-/* =====================================
-   RESERVE BOOK
-===================================== */
+/* UPDATE BOOK */
+router.put(
+  "/:id",
+  protect,
+  authorizeRoles("admin"),
+  updateBook
+);
+
+/* DELETE BOOK */
+router.delete(
+  "/:id",
+  protect,
+  authorizeRoles("admin"),
+  deleteBook
+);
+
+/* RESERVE */
 router.post(
   "/reserve/:id",
   protect,
   reserveBook
+);
+
+/* MY RESERVED */
+router.get(
+  "/reserved/my",
+  protect,
+  getReservedBooks
 );
 
 export default router;
