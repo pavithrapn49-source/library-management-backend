@@ -231,10 +231,10 @@ export const getReservedBooks =
       });
     }
   };
-
-  /* ================= CLAIM RESERVED BOOK ================= */
-export const claimReservedBook = async (req, res) => {
+//* ================= CLAIM RESERVED BOOK ================= */
+  export const claimReservedBook = async (req, res) => {
   try {
+    const userId = req.user._id;
     const book = await Book.findById(req.params.id);
 
     if (!book) {
@@ -245,22 +245,32 @@ export const claimReservedBook = async (req, res) => {
 
     if (
       !book.reservedBy ||
-      book.reservedBy.toString() !== req.user._id.toString()
+      book.reservedBy.toString() !== userId.toString()
     ) {
       return res.status(400).json({
-        message: "This book is not reserved by you",
+        message: "Not reserved by you",
       });
     }
 
-    if (!book.available) {
-      return res.status(400).json({
-        message: "Book still unavailable",
-      });
-    }
+    /* FORCE borrow reserved book */
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    await Transaction.create({
+      user: userId,
+      book: book._id,
+      borrowDate: new Date(),
+      dueDate,
+      status: "borrowed",
+      fine: 0,
+      finePaid: false,
+    });
 
     book.available = false;
-    book.borrowedBy = req.user._id;
+    book.borrowedBy = userId;
     book.borrowedAt = new Date();
+
     book.reservedBy = null;
     book.reservedAt = null;
 
