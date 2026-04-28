@@ -225,84 +225,6 @@ export const getReservedBooks =
     }
   };
 
-/* ================= CLAIM RESERVED BOOK ================= */
-export const claimReservedBook =
-  async (req, res) => {
-    try {
-      const userId = req.user._id;
-
-      const book =
-        await Book.findById(
-          req.params.id
-        );
-
-      if (!book) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Book not found",
-        });
-      }
-
-      if (
-        !book.reservedBy ||
-        book.reservedBy.toString() !==
-          userId.toString()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "This book is not reserved by you",
-        });
-      }
-
-      if (!book.available) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Book still unavailable",
-        });
-      }
-
-      const dueDate = new Date();
-      dueDate.setDate(
-        dueDate.getDate() + 7
-      );
-
-      await Transaction.create({
-        user: userId,
-        book: book._id,
-        borrowDate:
-          new Date(),
-        dueDate,
-        status: "borrowed",
-        fine: 0,
-        finePaid: false,
-      });
-
-      book.available = false;
-      book.borrowedBy = userId;
-      book.borrowedAt =
-        new Date();
-
-      book.reservedBy = null;
-      book.reservedAt = null;
-
-      await book.save();
-
-      res.status(200).json({
-        success: true,
-        message:
-          "Book borrowed successfully",
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message:
-          error.message,
-      });
-    }
-  };
 
 /* ================= CANCEL RESERVATION ================= */
 export const cancelReservation =
@@ -351,3 +273,69 @@ export const cancelReservation =
       });
     }
   };
+
+  export const claimReservedBook = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    if (
+      !book.reservedBy ||
+      book.reservedBy.toString() !== userId.toString()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "This book is not reserved by you",
+      });
+    }
+
+    /* still borrowed by someone else */
+    if (!book.available) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Book not returned yet. Please wait.",
+      });
+    }
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    await Transaction.create({
+      user: userId,
+      book: book._id,
+      borrowDate: new Date(),
+      dueDate,
+      status: "borrowed",
+      fine: 0,
+      finePaid: false,
+    });
+
+    book.available = false;
+    book.borrowedBy = userId;
+    book.borrowedAt = new Date();
+
+    book.reservedBy = null;
+    book.reservedAt = null;
+
+    await book.save();
+
+    res.json({
+      success: true,
+      message: "Book borrowed successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
