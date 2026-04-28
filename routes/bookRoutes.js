@@ -1,5 +1,4 @@
 import express from "express";
-
 import {
   getBooks,
   getBookById,
@@ -8,61 +7,26 @@ import {
   deleteBook,
   reserveBook,
   getReservedBooks,
-  claimReservedBook
+  claimReservedBook,
+  cancelReservation
 } from "../controllers/bookController.js";
 
-import {
-  protect,
-  authorizeRoles
-} from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* ================= BOOKS ================= */
-
 router.get("/", protect, getBooks);
-
 router.get("/:id", protect, getBookById);
 
-router.post(
-  "/",
-  protect,
-  authorizeRoles("admin"),
-  addBook
-);
+router.post("/", protect, addBook);
+router.put("/:id", protect, updateBook);
+router.delete("/:id", protect, deleteBook);
 
-router.put(
-  "/:id",
-  protect,
-  authorizeRoles("admin"),
-  updateBook
-);
+router.post("/reserve/:id", protect, reserveBook);
+router.get("/reserved/my", protect, getReservedBooks);
 
-router.delete(
-  "/:id",
-  protect,
-  authorizeRoles("admin"),
-  deleteBook
-);
-
-/* ================= MEMBER ================= */
-
-router.post(
-  "/reserve/:id",
-  protect,
-  reserveBook
-);
-
-router.post(
-  "/claim/:id",
-  protect,
-  claimReservedBook
-);
-
-router.get(
-  "/reserved/my",
-  protect,
-  getReservedBooks
-);
+/* NEW */
+router.post("/claim/:id", protect, claimReservedBook);
+router.post("/cancel-reserve/:id", protect, cancelReservation);
 
 export default router;

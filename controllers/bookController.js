@@ -201,57 +201,6 @@ export const reserveBook = async (
   }
 };
 
-/* ================= CLAIM RESERVED BOOK ================= */
-export const claimReservedBook =
-  async (req, res) => {
-    try {
-      const book = await Book.findById(
-        req.params.id
-      );
-
-      if (!book) {
-        return res.status(404).json({
-          success: false,
-          message: "Book not found",
-        });
-      }
-
-      if (
-        !book.claimableBy ||
-        book.claimableBy.toString() !==
-          req.user._id.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You cannot claim this book",
-        });
-      }
-
-      book.available = false;
-      book.availableCopies = 0;
-      book.borrowedBy = req.user._id;
-      book.borrowedAt = new Date();
-
-      book.claimableBy = null;
-      book.claimExpiresAt = null;
-
-      await book.save();
-
-      res.status(200).json({
-        success: true,
-        message:
-          "Book claimed successfully",
-        book,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  };
-
 /* ================= MY RESERVED BOOKS ================= */
 export const getReservedBooks =
   async (req, res) => {
@@ -282,3 +231,82 @@ export const getReservedBooks =
       });
     }
   };
+
+  /* ================= CLAIM RESERVED BOOK ================= */
+export const claimReservedBook = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found",
+      });
+    }
+
+    if (
+      !book.reservedBy ||
+      book.reservedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(400).json({
+        message: "This book is not reserved by you",
+      });
+    }
+
+    if (!book.available) {
+      return res.status(400).json({
+        message: "Book still unavailable",
+      });
+    }
+
+    book.available = false;
+    book.borrowedBy = req.user._id;
+    book.borrowedAt = new Date();
+    book.reservedBy = null;
+    book.reservedAt = null;
+
+    await book.save();
+
+    res.json({
+      message: "Book borrowed successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+/* ================= CANCEL RESERVATION ================= */
+export const cancelReservation = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found",
+      });
+    }
+
+    if (
+      !book.reservedBy ||
+      book.reservedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(400).json({
+        message: "Reservation not found",
+      });
+    }
+
+    book.reservedBy = null;
+    book.reservedAt = null;
+
+    await book.save();
+
+    res.json({
+      message: "Reservation cancelled",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
