@@ -1,4 +1,5 @@
 import Book from "../models/book.js";
+import Transaction from "../models/Transaction.js";
 
 /* ================= GET ALL BOOKS ================= */
 export const getBooks = async (req, res) => {
@@ -88,14 +89,15 @@ export const addBook = async (req, res) => {
 /* ================= UPDATE BOOK ================= */
 export const updateBook = async (req, res) => {
   try {
-    const book = await Book.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const book =
+      await Book.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     if (!book) {
       return res.status(404).json({
@@ -162,7 +164,7 @@ export const reserveBook = async (
       });
     }
 
-    if (book.availableCopies > 0) {
+    if (book.available) {
       return res.status(400).json({
         success: false,
         message:
@@ -206,16 +208,7 @@ export const getReservedBooks =
   async (req, res) => {
     try {
       const books = await Book.find({
-        $or: [
-          {
-            reservedBy:
-              req.user._id,
-          },
-          {
-            claimableBy:
-              req.user._id,
-          },
-        ],
+        reservedBy: req.user._id,
       }).sort({
         reservedAt: -1,
       });
@@ -231,92 +224,130 @@ export const getReservedBooks =
       });
     }
   };
-//* ================= CLAIM RESERVED BOOK ================= */
-  export const claimReservedBook = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const book = await Book.findById(req.params.id);
 
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found",
+/* ================= CLAIM RESERVED BOOK ================= */
+export const claimReservedBook =
+  async (req, res) => {
+    try {
+      const userId = req.user._id;
+
+      const book =
+        await Book.findById(
+          req.params.id
+        );
+
+      if (!book) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Book not found",
+        });
+      }
+
+      if (
+        !book.reservedBy ||
+        book.reservedBy.toString() !==
+          userId.toString()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "This book is not reserved by you",
+        });
+      }
+
+      if (!book.available) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Book still unavailable",
+        });
+      }
+
+      const dueDate = new Date();
+      dueDate.setDate(
+        dueDate.getDate() + 7
+      );
+
+      await Transaction.create({
+        user: userId,
+        book: book._id,
+        borrowDate:
+          new Date(),
+        dueDate,
+        status: "borrowed",
+        fine: 0,
+        finePaid: false,
+      });
+
+      book.available = false;
+      book.borrowedBy = userId;
+      book.borrowedAt =
+        new Date();
+
+      book.reservedBy = null;
+      book.reservedAt = null;
+
+      await book.save();
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Book borrowed successfully",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message:
+          error.message,
       });
     }
-
-    if (
-      !book.reservedBy ||
-      book.reservedBy.toString() !== userId.toString()
-    ) {
-      return res.status(400).json({
-        message: "Not reserved by you",
-      });
-    }
-
-    /* FORCE borrow reserved book */
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-
-    await Transaction.create({
-      user: userId,
-      book: book._id,
-      borrowDate: new Date(),
-      dueDate,
-      status: "borrowed",
-      fine: 0,
-      finePaid: false,
-    });
-
-    book.available = false;
-    book.borrowedBy = userId;
-    book.borrowedAt = new Date();
-
-    book.reservedBy = null;
-    book.reservedAt = null;
-
-    await book.save();
-
-    res.json({
-      message: "Book borrowed successfully",
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+  };
 
 /* ================= CANCEL RESERVATION ================= */
-export const cancelReservation = async (req, res) => {
-  try {
-    const book = await Book.findById(req.params.id);
+export const cancelReservation =
+  async (req, res) => {
+    try {
+      const book =
+        await Book.findById(
+          req.params.id
+        );
 
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found",
+      if (!book) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Book not found",
+        });
+      }
+
+      if (
+        !book.reservedBy ||
+        book.reservedBy.toString() !==
+          req.user._id.toString()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Reservation not found",
+        });
+      }
+
+      book.reservedBy = null;
+      book.reservedAt = null;
+
+      await book.save();
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Reservation cancelled",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message:
+          error.message,
       });
     }
-
-    if (
-      !book.reservedBy ||
-      book.reservedBy.toString() !== req.user._id.toString()
-    ) {
-      return res.status(400).json({
-        message: "Reservation not found",
-      });
-    }
-
-    book.reservedBy = null;
-    book.reservedAt = null;
-
-    await book.save();
-
-    res.json({
-      message: "Reservation cancelled",
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+  };
