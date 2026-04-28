@@ -8,10 +8,30 @@ export const getBooks = async (req, res) => {
       createdAt: -1,
     });
 
+    for (const book of books) {
+      const activeBorrow =
+        await Transaction.findOne({
+          book: book._id,
+          status: "borrowed",
+        });
+
+      // No borrow transaction but book marked borrowed
+      if (!activeBorrow && book.available === false) {
+        book.available = true;
+        book.borrowedBy = null;
+        book.borrowedAt = null;
+        await book.save();
+      }
+    }
+
+    const updatedBooks = await Book.find().sort({
+      createdAt: -1,
+    });
+
     res.status(200).json({
       success: true,
-      count: books.length,
-      books,
+      count: updatedBooks.length,
+      books: updatedBooks,
     });
   } catch (error) {
     res.status(500).json({
