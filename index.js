@@ -19,14 +19,6 @@ const app = express();
 /* ================= SECURITY ================= */
 app.use(helmet());
 
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    message: "Too many requests. Try again later.",
-  })
-);
-
 /* ================= CORS ================= */
 const allowedOrigins = [
   "http://localhost:5173",
@@ -35,32 +27,45 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("CORS blocked"));
+        callback(null, true);
       }
     },
     credentials: true,
   })
 );
 
+/* Handle OPTIONS preflight */
+app.options("*", cors());
+
+/* ================= RATE LIMIT ================= */
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === "OPTIONS",
+});
+
+app.use(limiter);
+
 /* ================= MIDDLEWARE ================= */
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 /* ================= HOME ================= */
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "Library Management Backend Running",
   });
 });
 
-/* ================= ROUTES ================= */
+/* ================= API ROUTES ================= */
 app.use("/api/users", userRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/transactions", transactionRoutes);
@@ -76,15 +81,15 @@ app.use((req, res) => {
 
 /* ================= ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
-  console.error(err.message);
+  console.error("❌ Error:", err.message);
 
-  res.status(500).json({
+  res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
   });
 });
 
-/* ================= START ================= */
+/* ================= DATABASE + SERVER ================= */
 const PORT = process.env.PORT || 5000;
 
 mongoose
@@ -97,5 +102,5 @@ mongoose
     });
   })
   .catch((err) => {
-    console.log("❌ DB Error:", err.message);
+    console.log("❌ MongoDB Connection Failed:", err.message);
   });
