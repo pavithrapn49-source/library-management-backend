@@ -11,6 +11,8 @@ import userRoutes from "./routes/userRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import borrowRoutes from "./routes/borrowRoutes.js";
+
 
 dotenv.config();
 
@@ -68,6 +70,7 @@ app.get("/", (req, res) => {
 /* ================= API ROUTES ================= */
 app.use("/api/users", userRoutes);
 app.use("/api/books", bookRoutes);
+app.use("/api/borrow", borrowRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/reviews", reviewRoutes);
 
