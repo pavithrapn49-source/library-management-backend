@@ -49,14 +49,19 @@ export const borrowBook = async (req, res) => {
     const { recordId } = req.body;
 
     const record = await Borrow.findById(recordId);
-    if (!record) return res.status(404).json({ message: "Record not found" });
+    if (!record) return res.status(404).json({ message: "Not found" });
 
     record.status = "borrowed";
     record.borrowedAt = new Date();
 
+    // ✅ Set due date (7 days)
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+    record.dueDate = due;
+
     await record.save();
 
-    res.json({ message: "Borrowed successfully", record });
+    res.json(record);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -69,21 +74,48 @@ export const returnBook = async (req, res) => {
     const { recordId } = req.body;
 
     const record = await Borrow.findById(recordId).populate("book");
-    if (!record) return res.status(404).json({ message: "Record not found" });
+
+    if (!record) return res.status(404).json({ message: "Not found" });
 
     record.status = "returned";
     record.returnedAt = new Date();
 
+    // ✅ Fine calculation
+    if (record.dueDate) {
+      const today = new Date();
+
+      if (today > record.dueDate) {
+        const lateDays = Math.ceil(
+          (today - record.dueDate) / (1000 * 60 * 60 * 24)
+        );
+
+        record.fine = lateDays * 10; // ₹10/day
+      }
+    }
+
     await record.save();
 
+    // restore copies
     record.book.copies += 1;
     await record.book.save();
 
-    res.json({ message: "Returned successfully", record });
+    res.json(record);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+export const getMyReturnedBooks = async (req, res) => {
+  try {
+    const records = await Borrow.find({
+      user: req.user.id,
+      status: "returned",
+    }).populate("book");
+
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};   
 
 // ✅ Borrowed books
 export const getMyBorrowedBooks = async (req, res) => {
@@ -96,10 +128,14 @@ export const getMyBorrowedBooks = async (req, res) => {
 };
 
 // ✅ Full history
-export const getHistory = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user.id,
-  }).populate("book");
+export const getMyHistory = async (req, res) => {
+  try {
+    const records = await Borrow.find({
+      user: req.user.id,
+    }).populate("book");
 
-  res.json(records);
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

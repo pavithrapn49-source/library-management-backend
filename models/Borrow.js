@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const borrowSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -14,8 +13,11 @@ const borrowSchema = new mongoose.Schema(
     reservedAt: Date,
     borrowedAt: Date,
     returnedAt: Date,
+
+    dueDate: Date,      
+    fine: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Borrow", borrowSchema);
+export default mongoose.models.Borrow || mongoose.model("Borrow", borrowSchema);
