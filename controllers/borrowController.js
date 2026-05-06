@@ -1,7 +1,7 @@
 import Borrow from "../models/Borrow.js";
 import Book from "../models/book.js";
 
-// ✅ Reserve
+/* ================= RESERVE BOOK ================= */
 export const reserveBook = async (req, res) => {
   try {
     const { bookId } = req.body;
@@ -9,19 +9,25 @@ export const reserveBook = async (req, res) => {
     const book = await Book.findById(bookId);
     if (!book) return res.status(404).json({ message: "Book not found" });
 
-    if (book.copies <= 0) {
-      return res.status(400).json({ message: "No copies available" });
+    // ❗ prevent duplicate reserve
+    const existing = await Borrow.findOne({
+      user: req.user._id,
+      book: bookId,
+      status: "reserved",
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Already reserved" });
     }
 
     const record = await Borrow.create({
-      user: req.user.id,
+      user: req.user._id,
       book: bookId,
       status: "reserved",
       reservedAt: new Date(),
     });
 
-    book.copies -= 1;
-    await book.save();
+    // ❗ DO NOT reduce copies here
 
     res.json({ message: "Reserved successfully", record });
   } catch (err) {
@@ -29,13 +35,15 @@ export const reserveBook = async (req, res) => {
   }
 };
 
-// ✅ Get Reserved
+/* ================= GET RESERVED ================= */
 export const getMyReservedBooks = async (req, res) => {
   try {
     const records = await Borrow.find({
-      user: req.user.id,
+      user: req.user._id,
       status: "reserved",
-    }).populate("book");
+    })
+      .populate("book")
+      .sort({ createdAt: -1 });
 
     res.json(records);
   } catch (err) {
@@ -43,96 +51,127 @@ export const getMyReservedBooks = async (req, res) => {
   }
 };
 
-// ✅ Borrow
+/* ================= BORROW BOOK ================= */
 export const borrowBook = async (req, res) => {
   try {
-    const { recordId } = req.body;
+    const { bookId } = req.body;
 
-    const record = await Borrow.findById(recordId);
-    if (!record) return res.status(404).json({ message: "Not found" });
+    const book = await Book.findById(bookId);
+    if (!book) return res.status(404).json({ message: "Book not found" });
 
-    record.status = "borrowed";
-    record.borrowedAt = new Date();
-
-    // ✅ Set due date (7 days)
-    const due = new Date();
-    due.setDate(due.getDate() + 7);
-    record.dueDate = due;
-
-    await record.save();
-
-    res.json(record);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-
-// ✅ Return
-export const returnBook = async (req, res) => {
-  try {
-    const { recordId } = req.body;
-
-    const record = await Borrow.findById(recordId).populate("book");
-
-    if (!record) return res.status(404).json({ message: "Not found" });
-
-    record.status = "returned";
-    record.returnedAt = new Date();
-
-    // ✅ Fine calculation
-    if (record.dueDate) {
-      const today = new Date();
-
-      if (today > record.dueDate) {
-        const lateDays = Math.ceil(
-          (today - record.dueDate) / (1000 * 60 * 60 * 24)
-        );
-
-        record.fine = lateDays * 10; // ₹10/day
-      }
+    if (book.availableCopies <= 0) {
+      return res.status(400).json({ message: "Book not available" });
     }
 
-    await record.save();
+    // ❗ prevent duplicate borrow
+    const alreadyBorrowed = await Borrow.findOne({
+      user: req.user._id,
+      book: bookId,
+      status: "borrowed",
+    });
 
-    // restore copies
-    record.book.copies += 1;
-    await record.book.save();
+    if (alreadyBorrowed) {
+      return res.status(400).json({ message: "Already borrowed" });
+    }
 
-    res.json(record);
+    const borrow = await Borrow.create({
+      user: req.user._id,
+      book: bookId,
+      status: "borrowed",
+      issueDate: new Date(),
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // ✅ reduce copies
+    book.availableCopies -= 1;
+    await book.save();
+
+    res.json({ message: "Book borrowed", borrow });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
+/* ================= RETURN BOOK ================= */
+export const returnBook = async (req, res) => {
+  try {
+    const { borrowId } = req.body;
+
+    const borrow = await Borrow.findById(borrowId).populate("book");
+    if (!borrow) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    if (borrow.status === "returned") {
+      return res.status(400).json({ message: "Already returned" });
+    }
+
+    let fine = 0;
+    const today = new Date();
+
+    if (borrow.dueDate && today > borrow.dueDate) {
+      const diffDays = Math.ceil(
+        (today - borrow.dueDate) / (1000 * 60 * 60 * 24)
+      );
+      fine = diffDays * 10;
+    }
+
+    borrow.status = "returned";
+    borrow.returnDate = today;
+    borrow.fine = fine;
+    await borrow.save();
+
+    // ✅ increase copies
+    const book = await Book.findById(borrow.book._id);
+    book.availableCopies += 1;
+    await book.save();
+
+    res.json({ message: "Book returned", fine });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ================= GET BORROWED ================= */
+export const getMyBorrowedBooks = async (req, res) => {
+  try {
+    const records = await Borrow.find({
+      user: req.user._id,
+      status: "borrowed",
+    })
+      .populate("book")
+      .sort({ createdAt: -1 });
+
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ================= GET RETURNED ================= */
 export const getMyReturnedBooks = async (req, res) => {
   try {
     const records = await Borrow.find({
-      user: req.user.id,
+      user: req.user._id,
       status: "returned",
-    }).populate("book");
+    })
+      .populate("book")
+      .sort({ createdAt: -1 });
 
     res.json(records);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-};   
-
-// ✅ Borrowed books
-export const getMyBorrowedBooks = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user.id,
-    status: "borrowed",
-  }).populate("book");
-
-  res.json(records);
 };
 
-// ✅ Full history
+/* ================= FULL HISTORY ================= */
 export const getMyHistory = async (req, res) => {
   try {
     const records = await Borrow.find({
-      user: req.user.id,
-    }).populate("book");
+      user: req.user._id,
+    })
+      .populate("book")
+      .sort({ createdAt: -1 });
 
     res.json(records);
   } catch (err) {

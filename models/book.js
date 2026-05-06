@@ -5,86 +5,53 @@ const bookSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
 
     author: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
 
     genre: {
       type: String,
-      default: ""
+      default: "",
     },
 
     description: {
       type: String,
-      default: ""
+      default: "",
     },
 
     isbn: {
       type: String,
       unique: true,
-      sparse: true
+      sparse: true,
     },
 
     price: {
       type: Number,
-      default: 0
+      default: 0,
     },
 
     coverImage: {
       type: String,
-      default: ""
+      default: "",
     },
 
-    available: {
-      type: Boolean,
-      default: true
+    // ✅ ONLY source of availability
+    availableCopies: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 0,
     },
-
-    borrowedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null
-    },
-
-    borrowedAt: {
-      type: Date,
-      default: null
-    },
-
-    claimableBy: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User",
-  default: null
-},
-claimExpiresAt: {
-  type: Date,
-  default: null
-},
-    returnedAt: {
-      type: Date,
-      default: null
-    },
-
-    reservedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null
-    },
-
-    reservedAt: {
-      type: Date,
-      default: null
-    }
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
 export default mongoose.models.Book ||
-mongoose.model("Book", bookSchema);
+  mongoose.model("Book", bookSchema);

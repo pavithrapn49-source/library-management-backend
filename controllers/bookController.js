@@ -1,31 +1,35 @@
 import Book from "../models/book.js";
-import Transaction from "../models/Transaction.js";
+import Borrow from "../models/Borrow.js";
+
+/* ================= HELPER: STATUS ================= */
+const getBookStatus = (book, borrows) => {
+  if (book.availableCopies > 0) return "available";
+
+  const hasReserved = borrows.some(
+    (b) => b.status === "reserved"
+  );
+
+  if (hasReserved) return "reserved";
+
+  return "borrowed";
+};
 
 /* ================= GET ALL BOOKS ================= */
 export const getBooks = async (req, res) => {
   try {
-    const books = await Book.find().sort({
-      createdAt: -1,
-    });
+    const books = await Book.find().sort({ createdAt: -1 });
 
-    for (const book of books) {
-      const activeBorrow =
-        await Transaction.findOne({
-          book: book._id,
-          status: "borrowed",
-        });
+    const borrows = await Borrow.find();
 
-      // No borrow transaction but book marked borrowed
-      if (!activeBorrow && book.available === false) {
-        book.available = true;
-        book.borrowedBy = null;
-        book.borrowedAt = null;
-        await book.save();
-      }
-    }
+    const updatedBooks = books.map((book) => {
+      const relatedBorrows = borrows.filter(
+        (b) => b.book.toString() === book._id.toString()
+      );
 
-    const updatedBooks = await Book.find().sort({
-      createdAt: -1,
+      return {
+        ...book.toObject(),
+        status: getBookStatus(book, relatedBorrows),
+      };
     });
 
     res.status(200).json({
@@ -44,9 +48,7 @@ export const getBooks = async (req, res) => {
 /* ================= GET SINGLE BOOK ================= */
 export const getBookById = async (req, res) => {
   try {
-    const book = await Book.findById(
-      req.params.id
-    );
+    const book = await Book.findById(req.params.id);
 
     if (!book) {
       return res.status(404).json({
@@ -55,9 +57,16 @@ export const getBookById = async (req, res) => {
       });
     }
 
+    const borrows = await Borrow.find({ book: book._id });
+
+    const status = getBookStatus(book, borrows);
+
     res.status(200).json({
       success: true,
-      book,
+      book: {
+        ...book.toObject(),
+        status,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -79,8 +88,7 @@ export const addBook = async (req, res) => {
       totalCopies,
     } = req.body;
 
-    const copies =
-      Number(totalCopies) || 1;
+    const copies = Number(totalCopies) || 1;
 
     const book = await Book.create({
       title,
@@ -90,7 +98,6 @@ export const addBook = async (req, res) => {
       isbn,
       totalCopies: copies,
       availableCopies: copies,
-      available: true,
     });
 
     res.status(201).json({
@@ -109,15 +116,11 @@ export const addBook = async (req, res) => {
 /* ================= UPDATE BOOK ================= */
 export const updateBook = async (req, res) => {
   try {
-    const book =
-      await Book.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+    const book = await Book.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
 
     if (!book) {
       return res.status(404).json({
@@ -142,9 +145,7 @@ export const updateBook = async (req, res) => {
 /* ================= DELETE BOOK ================= */
 export const deleteBook = async (req, res) => {
   try {
-    const book = await Book.findById(
-      req.params.id
-    );
+    const book = await Book.findById(req.params.id);
 
     if (!book) {
       return res.status(404).json({
@@ -158,199 +159,6 @@ export const deleteBook = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Book deleted",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/* ================= RESERVE BOOK ================= */
-export const reserveBook = async (
-  req,
-  res
-) => {
-  try {
-    const book = await Book.findById(
-      req.params.id
-    );
-
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
-    }
-
-    if (book.available) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Book available. Borrow directly.",
-      });
-    }
-
-    if (
-      book.reservedBy &&
-      book.reservedBy.toString() !==
-        req.user._id.toString()
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Already reserved by another user",
-      });
-    }
-
-    book.reservedBy = req.user._id;
-    book.reservedAt = new Date();
-
-    await book.save();
-
-    res.status(200).json({
-      success: true,
-      message:
-        "Book reserved successfully",
-      book,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/* ================= MY RESERVED BOOKS ================= */
-export const getReservedBooks =
-  async (req, res) => {
-    try {
-      const books = await Book.find({
-        reservedBy: req.user._id,
-      }).sort({
-        reservedAt: -1,
-      });
-
-      res.status(200).json({
-        success: true,
-        books,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  };
-
-
-/* ================= CANCEL RESERVATION ================= */
-export const cancelReservation =
-  async (req, res) => {
-    try {
-      const book =
-        await Book.findById(
-          req.params.id
-        );
-
-      if (!book) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Book not found",
-        });
-      }
-
-      if (
-        !book.reservedBy ||
-        book.reservedBy.toString() !==
-          req.user._id.toString()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Reservation not found",
-        });
-      }
-
-      book.reservedBy = null;
-      book.reservedAt = null;
-
-      await book.save();
-
-      res.status(200).json({
-        success: true,
-        message:
-          "Reservation cancelled",
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message:
-          error.message,
-      });
-    }
-  };
-
-  export const claimReservedBook = async (req, res) => {
-  try {
-    const userId = req.user._id;
-
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
-    }
-
-    if (
-      !book.reservedBy ||
-      book.reservedBy.toString() !== userId.toString()
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "This book is not reserved by you",
-      });
-    }
-
-    /* still borrowed by someone else */
-    if (!book.available) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Book not returned yet. Please wait.",
-      });
-    }
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-
-    await Transaction.create({
-      user: userId,
-      book: book._id,
-      borrowDate: new Date(),
-      dueDate,
-      status: "borrowed",
-      fine: 0,
-      finePaid: false,
-    });
-
-    book.available = false;
-    book.borrowedBy = userId;
-    book.borrowedAt = new Date();
-
-    book.reservedBy = null;
-    book.reservedAt = null;
-
-    await book.save();
-
-    res.json({
-      success: true,
-      message: "Book borrowed successfully",
     });
   } catch (error) {
     res.status(500).json({

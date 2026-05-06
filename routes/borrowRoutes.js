@@ -4,21 +4,26 @@ import {
   getMyReservedBooks,
   borrowBook,
   returnBook,
-  getMyBorrowedBooks, 
-    getMyHistory,} from "../controllers/borrowController.js";
+  getMyBorrowedBooks,
+  getMyReturnedBooks,
+  getMyHistory,
+} from "../controllers/borrowController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
-import { getMyReturnedBooks } from "../controllers/borrowController.js";
-
-
 
 const router = express.Router();
 
+/* ---------- BORROW SYSTEM ---------- */
+
+// Actions
 router.post("/reserve", protect, reserveBook);
-router.get("/my-reserved", protect, getMyReservedBooks);
 router.post("/borrow", protect, borrowBook);
 router.post("/return", protect, returnBook);
-router.get("/my-borrowed", protect, getMyBorrowedBooks);
-router.get("/my-history", protect, getMyHistory);
-router.get("/my-returned", protect, getMyReturnedBooks);
+
+// User data
+router.get("/reserved", protect, getMyReservedBooks);
+router.get("/borrowed", protect, getMyBorrowedBooks);
+router.get("/returned", protect, getMyReturnedBooks);
+router.get("/history", protect, getMyHistory);
 
 export default router;
