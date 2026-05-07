@@ -1,34 +1,56 @@
 import Book from "../models/book.js";
 import Borrow from "../models/Borrow.js";
 
-/* ================= HELPER: STATUS ================= */
+/* ================= HELPER: BOOK STATUS ================= */
 const getBookStatus = (book, borrows) => {
-  if (book.availableCopies > 0) return "available";
-
+  // Check if reserved
   const hasReserved = borrows.some(
     (b) => b.status === "reserved"
   );
 
-  if (hasReserved) return "reserved";
+  if (hasReserved) {
+    return "reserved";
+  }
 
-  return "borrowed";
+  // Check if borrowed
+  if (book.availableCopies <= 0) {
+    return "borrowed";
+  }
+
+  // Default
+  return "available";
 };
 
 /* ================= GET ALL BOOKS ================= */
 export const getBooks = async (req, res) => {
   try {
-    const books = await Book.find().sort({ createdAt: -1 });
+    // Get all books
+    const books = await Book.find().sort({
+      createdAt: -1,
+    });
 
-    const borrows = await Borrow.find();
+    // Get only active borrow/reserve records
+    const borrows = await Borrow.find({
+      status: {
+        $in: ["borrowed", "reserved"],
+      },
+    });
 
+    // Attach dynamic status
     const updatedBooks = books.map((book) => {
       const relatedBorrows = borrows.filter(
-        (b) => b.book.toString() === book._id.toString()
+        (b) =>
+          b.book.toString() ===
+          book._id.toString()
       );
 
       return {
         ...book.toObject(),
-        status: getBookStatus(book, relatedBorrows),
+
+        status: getBookStatus(
+          book,
+          relatedBorrows
+        ),
       };
     });
 
@@ -46,9 +68,14 @@ export const getBooks = async (req, res) => {
 };
 
 /* ================= GET SINGLE BOOK ================= */
-export const getBookById = async (req, res) => {
+export const getBookById = async (
+  req,
+  res
+) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(
+      req.params.id
+    );
 
     if (!book) {
       return res.status(404).json({
@@ -57,12 +84,23 @@ export const getBookById = async (req, res) => {
       });
     }
 
-    const borrows = await Borrow.find({ book: book._id });
+    // Get active records
+    const borrows = await Borrow.find({
+      book: book._id,
+      status: {
+        $in: ["borrowed", "reserved"],
+      },
+    });
 
-    const status = getBookStatus(book, borrows);
+    // Dynamic status
+    const status = getBookStatus(
+      book,
+      borrows
+    );
 
     res.status(200).json({
       success: true,
+
       book: {
         ...book.toObject(),
         status,
@@ -83,26 +121,33 @@ export const addBook = async (req, res) => {
       title,
       author,
       genre,
-      price,
+      description,
       isbn,
+      price,
+      coverImage,
       totalCopies,
     } = req.body;
 
-    const copies = Number(totalCopies) || 1;
+    const copies =
+      Number(totalCopies) || 1;
 
     const book = await Book.create({
       title,
       author,
       genre,
-      price,
+      description,
       isbn,
+      price,
+      coverImage,
+
       totalCopies: copies,
       availableCopies: copies,
     });
 
     res.status(201).json({
       success: true,
-      message: "Book added successfully",
+      message:
+        "Book added successfully",
       book,
     });
   } catch (error) {
@@ -114,13 +159,20 @@ export const addBook = async (req, res) => {
 };
 
 /* ================= UPDATE BOOK ================= */
-export const updateBook = async (req, res) => {
+export const updateBook = async (
+  req,
+  res
+) => {
   try {
-    const book = await Book.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const book =
+      await Book.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     if (!book) {
       return res.status(404).json({
@@ -143,9 +195,14 @@ export const updateBook = async (req, res) => {
 };
 
 /* ================= DELETE BOOK ================= */
-export const deleteBook = async (req, res) => {
+export const deleteBook = async (
+  req,
+  res
+) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(
+      req.params.id
+    );
 
     if (!book) {
       return res.status(404).json({
