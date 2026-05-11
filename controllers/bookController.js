@@ -224,3 +224,71 @@ export const deleteBook = async (
     });
   }
 };
+
+export const joinReservationQueue = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+
+    if (!book) {
+      return res.status(404).json({
+        message: "Book not found",
+      });
+    }
+
+    const userId = req.user.id;
+
+    // already in queue
+    if (
+      book.reservationQueue.includes(userId)
+    ) {
+      return res.status(400).json({
+        message: "Already in queue",
+      });
+    }
+
+    // if available, borrow directly
+    if (book.available) {
+      return res.status(400).json({
+        message:
+          "Book is available. Borrow directly.",
+      });
+    }
+
+    book.reservationQueue.push(userId);
+
+    await book.save();
+
+    res.status(200).json({
+      message: "Added to reservation queue",
+      queueLength:
+        book.reservationQueue.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to join queue",
+    });
+  }
+};
+
+export const getReservedForUser =
+  async (req, res) => {
+    try {
+
+      const books = await Book.find({
+        reservedBy: req.user.id,
+      });
+
+      res.status(200).json({
+        books,
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        message:
+          "Failed to fetch reserved books",
+      });
+    }
+  };

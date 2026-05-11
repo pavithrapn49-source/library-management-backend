@@ -40,7 +40,23 @@ const bookSchema = new mongoose.Schema(
       default: "",
     },
 
-    // ✅ ONLY source of availability
+    /* ================= RESERVATION QUEUE ================= */
+
+    reservationQueue: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    reservedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    /* ================= COPIES ================= */
+
     availableCopies: {
       type: Number,
       required: true,
@@ -50,8 +66,16 @@ const bookSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+/* ================= VIRTUAL AVAILABLE ================= */
+
+bookSchema.virtual("available").get(function () {
+  return this.availableCopies > 0;
+});
 
 export default mongoose.models.Book ||
   mongoose.model("Book", bookSchema);
