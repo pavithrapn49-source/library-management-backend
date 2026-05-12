@@ -18,64 +18,56 @@ import {
 
 const router = express.Router();
 
-/* ================= RESERVE BOOK ================= */
-
+/* RESERVE */
 router.post(
   "/reserve",
   protect,
   reserveBook
 );
 
-/* ================= RESERVED BOOKS ================= */
-
+/* RESERVED BOOKS */
 router.get(
   "/reserved",
   protect,
   getMyReservedBooks
 );
 
-/* ================= BORROW BOOK ================= */
-
+/* BORROW */
 router.post(
   "/borrow",
   protect,
   borrowBook
 );
 
-/* ================= RETURN BOOK ================= */
-
+/* RETURN */
 router.post(
   "/return",
   protect,
   returnBook
 );
 
-/* ================= MY BORROWED ================= */
-
+/* MY BORROWED */
 router.get(
-  "/my-borrows",
+  "/borrowed",
   protect,
   getMyBorrowedBooks
 );
 
-/* ================= MY RETURNED ================= */
-
+/* MY RETURNED */
 router.get(
   "/returned",
   protect,
   getMyReturnedBooks
 );
 
-/* ================= MY HISTORY ================= */
-
+/* HISTORY */
 router.get(
   "/history",
   protect,
   getMyHistory
 );
 
-/* ================= ADMIN TRANSACTIONS ================= */
-
+/* ADMIN */
 router.get(
   "/all",
   protect,
