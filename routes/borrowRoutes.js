@@ -1,29 +1,78 @@
 import express from "express";
+
 import {
   reserveBook,
-  getMyReservedBooks,
   borrowBook,
   returnBook,
   getMyBorrowedBooks,
+  getMyReservedBooks,
   getMyReturnedBooks,
   getMyHistory,
+  getAllTransactions,
 } from "../controllers/borrowController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* ---------- BORROW SYSTEM ---------- */
+/* ================= MEMBER ROUTES ================= */
 
-// Actions
-router.post("/reserve", protect, reserveBook);
-router.post("/borrow", protect, borrowBook);
-router.post("/return", protect, returnBook);
+/* borrow book */
+router.post(
+  "/borrow",
+  protect,
+  borrowBook
+);
 
-// User data
-router.get("/reserved", protect, getMyReservedBooks);
-router.get("/borrowed", protect, getMyBorrowedBooks);
-router.get("/returned", protect, getMyReturnedBooks);
-router.get("/history", protect, getMyHistory);
+/* reserve book */
+router.post(
+  "/reserve",
+  protect,
+  reserveBook
+);
+
+/* return book */
+router.post(
+  "/return",
+  protect,
+  returnBook
+);
+
+/* borrowed books */
+router.get(
+  "/my-borrows",
+  protect,
+  getMyBorrowedBooks
+);
+
+/* reserved books */
+router.get(
+  "/my-reserved",
+  protect,
+  getMyReservedBooks
+);
+
+/* returned books */
+router.get(
+  "/my-returned",
+  protect,
+  getMyReturnedBooks
+);
+
+/* full history */
+router.get(
+  "/history",
+  protect,
+  getMyHistory
+);
+
+/* ================= ADMIN ================= */
+
+/* all transactions */
+router.get(
+  "/all",
+  protect,
+  getAllTransactions
+);
 
 export default router;

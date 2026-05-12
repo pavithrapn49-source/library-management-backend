@@ -55,6 +55,45 @@ const bookSchema = new mongoose.Schema(
       default: null,
     },
 
+
+    reviews: [
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    name: String,
+
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+
+    comment: {
+      type: String,
+      default: "",
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+],
+
+averageRating: {
+  type: Number,
+  default: 0,
+},
+
+numReviews: {
+  type: Number,
+  default: 0,
+},
+
     /* ================= COPIES ================= */
 
     availableCopies: {

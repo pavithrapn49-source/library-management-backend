@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   getBooks,
   getBookById,
@@ -6,32 +7,84 @@ import {
   updateBook,
   deleteBook,
   getReservedForUser,
-} from "../controllers/bookController.js";
-
-import { protect } from "../middleware/authMiddleware.js";
-import {
   joinReservationQueue,
+  addBookReview,
 } from "../controllers/bookController.js";
 
-const router = express.Router();
+import {
+  protect,
+  adminOnly,
+} from "../middleware/authMiddleware.js";
 
-/* ---------- BOOK ROUTES ONLY ---------- */
+import upload
+from "../middleware/upload.js";
 
-// Get all books
-router.get("/", protect, getBooks);
+const router =
+  express.Router();
 
-// Get single book
-router.get("/:id", protect, getBookById);
+/* ================= BOOK ROUTES ================= */
 
-// Admin CRUD
-router.post("/", protect, addBook);
-router.put("/:id", protect, updateBook);
-router.delete("/:id", protect, deleteBook);
+/* GET ALL BOOKS */
+
+router.get(
+  "/",
+  protect,
+  getBooks
+);
+
+router.post(
+  "/:id/review",
+  protect,
+  addBookReview
+);
+
+/* GET SINGLE BOOK */
+
+router.get(
+  "/:id",
+  protect,
+  getBookById
+);
+
+/* ADD BOOK */
+
+router.post(
+  "/",
+  protect,
+  adminOnly,
+  upload.single("coverImage"),
+  addBook
+);
+
+/* UPDATE BOOK */
+
+router.put(
+  "/:id",
+  protect,
+  adminOnly,
+  upload.single("coverImage"),
+  updateBook
+);
+
+/* DELETE BOOK */
+
+router.delete(
+  "/:id",
+  protect,
+  adminOnly,
+  deleteBook
+);
+
+/* JOIN RESERVATION QUEUE */
+
 router.post(
   "/:id/join-queue",
   protect,
   joinReservationQueue
 );
+
+/* RESERVED FOR USER */
+
 router.get(
   "/reserved/me",
   protect,
