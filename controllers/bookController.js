@@ -3,16 +3,23 @@ import Borrow from "../models/Borrow.js";
 
 /* ================= HELPER ================= */
 
-const getBookStatus = (book, borrows) => {
-  const hasReserved = borrows.some(
-    (b) => b.status === "reserved"
-  );
+const getBookStatus = (
+  book,
+  borrows
+) => {
+  const hasReserved =
+    borrows.some(
+      (b) =>
+        b.status === "reserved"
+    );
 
   if (hasReserved) {
     return "reserved";
   }
 
-  if (book.availableCopies <= 0) {
+  if (
+    book.availableCopies <= 0
+  ) {
     return "borrowed";
   }
 
@@ -21,261 +28,305 @@ const getBookStatus = (book, borrows) => {
 
 /* ================= GET ALL BOOKS ================= */
 
-export const getBooks = async (req, res) => {
-  try {
-    const books = await Book.find()
-      .populate("reservedBy", "name email")
-      .populate(
-        "reservationQueue",
-        "name email"
-      )
-      .sort({ createdAt: -1 });
+export const getBooks =
+  async (req, res) => {
+    try {
+      const books =
+        await Book.find()
+          .populate(
+            "reservedBy",
+            "name email"
+          )
+          .populate(
+            "reservationQueue",
+            "name email"
+          )
+          .sort({
+            createdAt: -1,
+          });
 
-    const borrows = await Borrow.find({
-      status: {
-        $in: ["borrowed", "reserved"],
-      },
-    });
+      const borrows =
+        await Borrow.find({
+          status: {
+            $in: [
+              "borrowed",
+              "reserved",
+            ],
+          },
+        });
 
-    const updatedBooks = books.map((book) => {
-      const relatedBorrows =
-        borrows.filter(
-          (b) =>
-            b.book.toString() ===
-            book._id.toString()
-        );
+      const updatedBooks =
+        books.map((book) => {
+          const relatedBorrows =
+            borrows.filter(
+              (b) =>
+                b.book.toString() ===
+                book._id.toString()
+            );
 
-      return {
-        ...book.toObject(),
+          return {
+            ...book.toObject(),
 
-        status: getBookStatus(
-          book,
-          relatedBorrows
-        ),
+            status:
+              getBookStatus(
+                book,
+                relatedBorrows
+              ),
 
-        queueLength:
-          book.reservationQueue.length,
-      };
-    });
+            queueLength:
+              book
+                .reservationQueue
+                ?.length || 0,
+          };
+        });
 
-    res.status(200).json({
-      success: true,
-      count: updatedBooks.length,
-      books: updatedBooks,
-    });
-  } catch (error) {
-    console.error(error);
+      res.status(200).json({
+        success: true,
+        count:
+          updatedBooks.length,
+        books: updatedBooks,
+      });
+    } catch (error) {
+      console.error(error);
 
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+      res.status(500).json({
+        success: false,
+        message:
+          error.message,
+      });
+    }
+  };
 
 /* ================= GET SINGLE BOOK ================= */
 
-export const getBookById = async (
-  req,
-  res
-) => {
-  try {
-    const book = await Book.findById(
-      req.params.id
-    )
-      .populate(
-        "reservedBy",
-        "name email"
-      )
-      .populate(
-        "reservationQueue",
-        "name email"
-      );
+export const getBookById =
+  async (req, res) => {
+    try {
+      const book =
+        await Book.findById(
+          req.params.id
+        )
+          .populate(
+            "reservedBy",
+            "name email"
+          )
+          .populate(
+            "reservationQueue",
+            "name email"
+          );
 
-    if (!book) {
-      return res.status(404).json({
+      if (!book) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Book not found",
+          });
+      }
+
+      const borrows =
+        await Borrow.find({
+          book: book._id,
+          status: {
+            $in: [
+              "borrowed",
+              "reserved",
+            ],
+          },
+        });
+
+      const status =
+        getBookStatus(
+          book,
+          borrows
+        );
+
+      res.status(200).json({
+        success: true,
+
+        book: {
+          ...book.toObject(),
+
+          status,
+
+          queueLength:
+            book
+              .reservationQueue
+              ?.length || 0,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
         success: false,
-        message: "Book not found",
+        message:
+          error.message,
       });
     }
-
-    const borrows = await Borrow.find({
-      book: book._id,
-      status: {
-        $in: ["borrowed", "reserved"],
-      },
-    });
-
-    const status = getBookStatus(
-      book,
-      borrows
-    );
-
-    res.status(200).json({
-      success: true,
-
-      book: {
-        ...book.toObject(),
-        status,
-
-        queueLength:
-          book.reservationQueue.length,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  };
 
 /* ================= ADD BOOK ================= */
 
-export const addBook = async (req, res) => {
-  try {
-    const {
-      title,
-      author,
-      genre,
-      description,
-      isbn,
-      price,
-      totalCopies,
-    } = req.body;
+export const addBook =
+  async (req, res) => {
+    try {
+      const {
+        title,
+        author,
+        genre,
+        description,
+        isbn,
+        price,
+        totalCopies,
+      } = req.body;
 
-    const copies =
-      Number(totalCopies) || 1;
+      const copies =
+        Number(totalCopies) ||
+        1;
 
-    const book = await Book.create({
-      title,
-      author,
-      genre,
-      description,
-      isbn,
-      price,
+      const book =
+        await Book.create({
+          title,
+          author,
+          genre,
+          description,
+          isbn,
+          price,
 
-      coverImage: req.file
-        ? req.file.path
-        : "",
+          coverImage:
+            req.file
+              ? req.file.path
+              : "",
 
-      totalCopies: copies,
-      availableCopies: copies,
-    });
+          totalCopies: copies,
 
-    res.status(201).json({
-      success: true,
-      message:
-        "Book added successfully",
-      book,
-    });
-  } catch (error) {
-    console.error(error);
+          availableCopies:
+            copies,
+        });
 
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+      res.status(201).json({
+        success: true,
+        message:
+          "Book added successfully",
+        book,
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message:
+          error.message,
+      });
+    }
+  };
 
 /* ================= UPDATE BOOK ================= */
 
-export const updateBook = async (
-  req,
-  res
-) => {
-  try {
-    const updateData = {
-      ...req.body,
-    };
+export const updateBook =
+  async (req, res) => {
+    try {
+      const updateData = {
+        ...req.body,
+      };
 
-    if (req.file) {
-      updateData.coverImage =
-        req.file.path;
-    }
+      if (req.file) {
+        updateData.coverImage =
+          req.file.path;
+      }
 
-    const book =
-      await Book.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+      const book =
+        await Book.findByIdAndUpdate(
+          req.params.id,
+          updateData,
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
 
-    if (!book) {
-      return res.status(404).json({
+      if (!book) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Book not found",
+          });
+      }
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Book updated",
+        book,
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
         success: false,
-        message: "Book not found",
+        message:
+          error.message,
       });
     }
-
-    res.status(200).json({
-      success: true,
-      message: "Book updated",
-      book,
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  };
 
 /* ================= DELETE BOOK ================= */
 
-export const deleteBook = async (
-  req,
-  res
-) => {
-  try {
-    const book = await Book.findById(
-      req.params.id
-    );
+export const deleteBook =
+  async (req, res) => {
+    try {
+      const book =
+        await Book.findById(
+          req.params.id
+        );
 
-    if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
+      if (!book) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Book not found",
+          });
+      }
+
+      const activeBorrow =
+        await Borrow.findOne({
+          book: book._id,
+          status: "borrowed",
+        });
+
+      if (activeBorrow) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Cannot delete borrowed book",
+          });
+      }
+
+      await book.deleteOne();
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Book deleted",
       });
-    }
+    } catch (error) {
+      console.error(error);
 
-    const activeBorrow =
-      await Borrow.findOne({
-        book: book._id,
-        status: "borrowed",
-      });
-
-    if (activeBorrow) {
-      return res.status(400).json({
+      res.status(500).json({
         success: false,
         message:
-          "Cannot delete borrowed book",
+          error.message,
       });
     }
-
-    await book.deleteOne();
-
-    res.status(200).json({
-      success: true,
-      message: "Book deleted",
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  };
 
 /* ================= JOIN QUEUE ================= */
 
@@ -288,35 +339,43 @@ export const joinReservationQueue =
         );
 
       if (!book) {
-        return res.status(404).json({
-          message: "Book not found",
-        });
+        return res
+          .status(404)
+          .json({
+            message:
+              "Book not found",
+          });
       }
 
-      const userId = req.user.id;
+      const userId =
+        req.user.id;
 
       const alreadyQueued =
         book.reservationQueue.some(
           (id) =>
-            id.toString() === userId
+            id.toString() ===
+            userId
         );
 
       if (alreadyQueued) {
-        return res.status(400).json({
-          message:
-            "Already in queue",
-        });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Already in queue",
+          });
       }
 
-      /* AVAILABLE */
-
       if (
-        book.availableCopies > 0
+        book.availableCopies >
+        0
       ) {
-        return res.status(400).json({
-          message:
-            "Book available. Borrow directly.",
-        });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Book available. Borrow directly.",
+          });
       }
 
       book.reservationQueue.push(
@@ -331,7 +390,9 @@ export const joinReservationQueue =
           "Added to reservation queue",
 
         queueLength:
-          book.reservationQueue.length,
+          book
+            .reservationQueue
+            .length,
       });
     } catch (error) {
       console.error(error);
@@ -349,9 +410,11 @@ export const joinReservationQueue =
 export const getReservedForUser =
   async (req, res) => {
     try {
-      const books = await Book.find({
-        reservedBy: req.user.id,
-      });
+      const books =
+        await Book.find({
+          reservedBy:
+            req.user.id,
+        });
 
       res.status(200).json({
         success: true,
@@ -368,12 +431,11 @@ export const getReservedForUser =
     }
   };
 
-  /* ================= ADD REVIEW ================= */
+/* ================= ADD REVIEW ================= */
 
 export const addBookReview =
   async (req, res) => {
     try {
-
       const {
         rating,
         comment,
@@ -388,12 +450,11 @@ export const addBookReview =
         return res
           .status(404)
           .json({
+            success: false,
             message:
               "Book not found",
           });
       }
-
-      /* already reviewed */
 
       const alreadyReviewed =
         book.reviews.find(
@@ -402,10 +463,13 @@ export const addBookReview =
             req.user._id.toString()
         );
 
-      if (alreadyReviewed) {
+      if (
+        alreadyReviewed
+      ) {
         return res
           .status(400)
           .json({
+            success: false,
             message:
               "Already reviewed",
           });
@@ -414,13 +478,14 @@ export const addBookReview =
       const review = {
         user: req.user._id,
         name: req.user.name,
-        rating: Number(rating),
+        rating:
+          Number(rating),
         comment,
       };
 
-      book.reviews.push(review);
-
-      /* calculate average */
+      book.reviews.push(
+        review
+      );
 
       book.numReviews =
         book.reviews.length;
@@ -428,7 +493,8 @@ export const addBookReview =
       book.averageRating =
         book.reviews.reduce(
           (acc, item) =>
-            item.rating + acc,
+            acc +
+            item.rating,
           0
         ) /
         book.reviews.length;
@@ -438,12 +504,13 @@ export const addBookReview =
       res.status(201).json({
         success: true,
         message:
-          "Review added",
+          "Review added successfully",
       });
-
     } catch (error) {
+      console.error(error);
 
       res.status(500).json({
+        success: false,
         message:
           error.message,
       });

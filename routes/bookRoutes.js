@@ -16,15 +16,11 @@ import {
   adminOnly,
 } from "../middleware/authMiddleware.js";
 
-import upload
-from "../middleware/upload.js";
+import upload from "../middleware/upload.js";
 
-const router =
-  express.Router();
+const router = express.Router();
 
-/* ================= BOOK ROUTES ================= */
-
-/* GET ALL BOOKS */
+/* ================= GET ALL BOOKS ================= */
 
 router.get(
   "/",
@@ -32,13 +28,7 @@ router.get(
   getBooks
 );
 
-router.post(
-  "/:id/review",
-  protect,
-  addBookReview
-);
-
-/* GET SINGLE BOOK */
+/* ================= GET SINGLE BOOK ================= */
 
 router.get(
   "/:id",
@@ -46,7 +36,7 @@ router.get(
   getBookById
 );
 
-/* ADD BOOK */
+/* ================= ADD BOOK ================= */
 
 router.post(
   "/",
@@ -56,7 +46,7 @@ router.post(
   addBook
 );
 
-/* UPDATE BOOK */
+/* ================= UPDATE BOOK ================= */
 
 router.put(
   "/:id",
@@ -66,7 +56,7 @@ router.put(
   updateBook
 );
 
-/* DELETE BOOK */
+/* ================= DELETE BOOK ================= */
 
 router.delete(
   "/:id",
@@ -75,7 +65,15 @@ router.delete(
   deleteBook
 );
 
-/* JOIN RESERVATION QUEUE */
+/* ================= ADD REVIEW ================= */
+
+router.post(
+  "/:id/review",
+  protect,
+  addBookReview
+);
+
+/* ================= JOIN RESERVATION QUEUE ================= */
 
 router.post(
   "/:id/join-queue",
@@ -83,7 +81,7 @@ router.post(
   joinReservationQueue
 );
 
-/* RESERVED FOR USER */
+/* ================= GET RESERVED BOOKS ================= */
 
 router.get(
   "/reserved/me",
