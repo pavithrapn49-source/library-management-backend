@@ -2,17 +2,28 @@ import Borrow from "../models/Borrow.js";
 import Book from "../models/book.js";
 
 /* ================= RESERVE BOOK ================= */
-export const reserveBook = async (req, res) => {
-  try {
-    const { bookId } = req.body;
 
-    const book = await Book.findById(bookId);
+export const reserveBook = async (
+  req,
+  res
+) => {
+  try {
+
+    const { bookId } =
+      req.body;
+
+    const book =
+      await Book.findById(
+        bookId
+      );
 
     if (!book) {
       return res
         .status(404)
         .json({
-          message: "Book not found",
+          success: false,
+          message:
+            "Book not found",
         });
     }
 
@@ -29,6 +40,7 @@ export const reserveBook = async (req, res) => {
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "You already borrowed this book",
         });
@@ -47,6 +59,7 @@ export const reserveBook = async (req, res) => {
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "Already reserved",
         });
@@ -59,7 +72,8 @@ export const reserveBook = async (req, res) => {
         user: req.user._id,
         book: bookId,
         status: "reserved",
-        reservedAt: new Date(),
+        reservedAt:
+          new Date(),
       });
 
     /* add to queue */
@@ -76,16 +90,20 @@ export const reserveBook = async (req, res) => {
 
     await book.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
       message:
         "Book reserved successfully",
       record,
     });
+
   } catch (err) {
+
     res.status(500).json({
+      success: false,
       message: err.message,
     });
+
   }
 };
 
@@ -94,6 +112,7 @@ export const reserveBook = async (req, res) => {
 export const getMyReservedBooks =
   async (req, res) => {
     try {
+
       const records =
         await Borrow.find({
           user: req.user._id,
@@ -104,11 +123,19 @@ export const getMyReservedBooks =
             createdAt: -1,
           });
 
-      res.json(records);
-    } catch (err) {
-      res.status(500).json({
-        message: err.message,
+      res.status(200).json({
+        success: true,
+        records,
       });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
   };
 
@@ -119,16 +146,20 @@ export const borrowBook = async (
   res
 ) => {
   try {
-    const { bookId } = req.body;
 
-    const book = await Book.findById(
-      bookId
-    );
+    const { bookId } =
+      req.body;
+
+    const book =
+      await Book.findById(
+        bookId
+      );
 
     if (!book) {
       return res
         .status(404)
         .json({
+          success: false,
           message:
             "Book not found",
         });
@@ -137,11 +168,13 @@ export const borrowBook = async (
     /* no copies */
 
     if (
-      book.availableCopies <= 0
+      book.availableCopies <=
+      0
     ) {
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "Book not available",
         });
@@ -160,12 +193,13 @@ export const borrowBook = async (
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "Already borrowed",
         });
     }
 
-    /* check reservation priority */
+    /* reservation priority */
 
     if (
       book.reservedBy &&
@@ -175,6 +209,7 @@ export const borrowBook = async (
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "Book reserved for another user",
         });
@@ -187,7 +222,8 @@ export const borrowBook = async (
         user: req.user._id,
         book: bookId,
         status: "borrowed",
-        issueDate: new Date(),
+        issueDate:
+          new Date(),
         dueDate: new Date(
           Date.now() +
             7 *
@@ -209,7 +245,9 @@ export const borrowBook = async (
       book.reservedBy.toString() ===
         req.user._id.toString()
     ) {
-      book.reservedBy = null;
+
+      book.reservedBy =
+        null;
 
       book.reservationQueue =
         book.reservationQueue.filter(
@@ -218,27 +256,33 @@ export const borrowBook = async (
             req.user._id.toString()
         );
 
-      /* remove reserved record */
-
-      await Borrow.findOneAndDelete({
-        user: req.user._id,
-        book: bookId,
-        status: "reserved",
-      });
+      await Borrow.findOneAndDelete(
+        {
+          user: req.user._id,
+          book: bookId,
+          status:
+            "reserved",
+        }
+      );
     }
 
     await book.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
       message:
         "Book borrowed successfully",
       borrow,
     });
+
   } catch (err) {
+
     res.status(500).json({
-      message: err.message,
+      success: false,
+      message:
+        err.message,
     });
+
   }
 };
 
@@ -249,7 +293,9 @@ export const returnBook = async (
   res
 ) => {
   try {
-    const { borrowId } = req.body;
+
+    const { borrowId } =
+      req.body;
 
     const borrow =
       await Borrow.findById(
@@ -260,6 +306,7 @@ export const returnBook = async (
       return res
         .status(404)
         .json({
+          success: false,
           message:
             "Record not found",
         });
@@ -272,6 +319,7 @@ export const returnBook = async (
       return res
         .status(400)
         .json({
+          success: false,
           message:
             "Already returned",
         });
@@ -279,14 +327,17 @@ export const returnBook = async (
 
     let fine = 0;
 
-    const today = new Date();
+    const today =
+      new Date();
 
     /* calculate fine */
 
     if (
       borrow.dueDate &&
-      today > borrow.dueDate
+      today >
+        borrow.dueDate
     ) {
+
       const diffDays =
         Math.ceil(
           (today -
@@ -297,14 +348,17 @@ export const returnBook = async (
               24)
         );
 
-      fine = diffDays * 10;
+      fine =
+        diffDays * 10;
     }
 
     /* update borrow */
 
-    borrow.status = "returned";
+    borrow.status =
+      "returned";
 
-    borrow.returnDate = today;
+    borrow.returnDate =
+      today;
 
     borrow.fine = fine;
 
@@ -325,26 +379,37 @@ export const returnBook = async (
       book.reservationQueue
         .length > 0
     ) {
-      const nextUser =
-        book.reservationQueue[0];
 
-      book.reservedBy = nextUser;
+      const nextUser =
+        book
+          .reservationQueue[0];
+
+      book.reservedBy =
+        nextUser;
+
     } else {
-      book.reservedBy = null;
+
+      book.reservedBy =
+        null;
     }
 
     await book.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
       message:
         "Book returned successfully",
       fine,
     });
+
   } catch (err) {
+
     res.status(500).json({
-      message: err.message,
+      success: false,
+      message:
+        err.message,
     });
+
   }
 };
 
@@ -353,21 +418,31 @@ export const returnBook = async (
 export const getMyBorrowedBooks =
   async (req, res) => {
     try {
+
       const records =
         await Borrow.find({
           user: req.user._id,
-          status: "borrowed",
+          status:
+            "borrowed",
         })
           .populate("book")
           .sort({
             createdAt: -1,
           });
 
-      res.json(records);
-    } catch (err) {
-      res.status(500).json({
-        message: err.message,
+      res.status(200).json({
+        success: true,
+        records,
       });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
   };
 
@@ -376,21 +451,31 @@ export const getMyBorrowedBooks =
 export const getMyReturnedBooks =
   async (req, res) => {
     try {
+
       const records =
         await Borrow.find({
           user: req.user._id,
-          status: "returned",
+          status:
+            "returned",
         })
           .populate("book")
           .sort({
             createdAt: -1,
           });
 
-      res.json(records);
-    } catch (err) {
-      res.status(500).json({
-        message: err.message,
+      res.status(200).json({
+        success: true,
+        records,
       });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
   };
 
@@ -399,6 +484,7 @@ export const getMyReturnedBooks =
 export const getMyHistory =
   async (req, res) => {
     try {
+
       const records =
         await Borrow.find({
           user: req.user._id,
@@ -408,11 +494,19 @@ export const getMyHistory =
             createdAt: -1,
           });
 
-      res.json(records);
-    } catch (err) {
-      res.status(500).json({
-        message: err.message,
+      res.status(200).json({
+        success: true,
+        records,
       });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
   };
 
@@ -421,6 +515,7 @@ export const getMyHistory =
 export const getAllTransactions =
   async (req, res) => {
     try {
+
       const records =
         await Borrow.find()
           .populate(
@@ -435,10 +530,18 @@ export const getAllTransactions =
             createdAt: -1,
           });
 
-      res.json(records);
-    } catch (err) {
-      res.status(500).json({
-        message: err.message,
+      res.status(200).json({
+        success: true,
+        records,
       });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
   };
