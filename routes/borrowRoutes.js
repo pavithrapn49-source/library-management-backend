@@ -1,5 +1,4 @@
 import express from "express";
-
 import {
   reserveBook,
   getMyReservedBooks,
@@ -11,68 +10,20 @@ import {
   getAllTransactions,
 } from "../controllers/borrowController.js";
 
-import {
-  protect,
-  adminOnly,
-} from "../middleware/authMiddleware.js";
+import { protect, adminOnly } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* RESERVE */
-router.post(
-  "/reserve",
-  protect,
-  reserveBook
-);
+router.post("/reserve", protect, reserveBook);
+router.get("/reserved", protect, getMyReservedBooks);
 
-/* RESERVED BOOKS */
-router.get(
-  "/reserved",
-  protect,
-  getMyReservedBooks
-);
+router.post("/borrow", protect, borrowBook);
+router.post("/return", protect, returnBook);
 
-/* BORROW */
-router.post(
-  "/borrow",
-  protect,
-  borrowBook
-);
+router.get("/borrowed", protect, getMyBorrowedBooks);
+router.get("/returned", protect, getMyReturnedBooks);
+router.get("/history", protect, getMyHistory);
 
-/* RETURN */
-router.post(
-  "/return",
-  protect,
-  returnBook
-);
-
-/* MY BORROWED */
-router.get(
-  "/borrowed",
-  protect,
-  getMyBorrowedBooks
-);
-
-/* MY RETURNED */
-router.get(
-  "/returned",
-  protect,
-  getMyReturnedBooks
-);
-
-/* HISTORY */
-router.get(
-  "/history",
-  protect,
-  getMyHistory
-);
-
-/* ADMIN TRANSACTIONS */
-router.get(
-  "/transactions/all",
-  protect,
-  adminOnly,
-  getAllTransactions
-);
+router.get("/transactions/all", protect, adminOnly, getAllTransactions);
 
 export default router;
