@@ -147,8 +147,7 @@ export const borrowBook = async (
 ) => {
   try {
 
-    const { bookId } =
-      req.body;
+    const { bookId } = req.body;
 
     const book =
       await Book.findById(
@@ -165,11 +164,8 @@ export const borrowBook = async (
         });
     }
 
-    /* no copies */
-
     if (
-      book.availableCopies <=
-      0
+      book.availableCopies <= 0
     ) {
       return res
         .status(400)
@@ -199,88 +195,50 @@ export const borrowBook = async (
         });
     }
 
-    /* reservation priority */
-
-    if (
-      book.reservedBy &&
-      book.reservedBy.toString() !==
-        req.user._id.toString()
-    ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Book reserved for another user",
-        });
-    }
-
-    /* create borrow */
+    /* CREATE BORROW RECORD */
 
     const borrow =
       await Borrow.create({
         user: req.user._id,
         book: bookId,
+
         status: "borrowed",
-        issueDate:
+
+        borrowDate:
           new Date(),
-        dueDate: new Date(
-          Date.now() +
-            7 *
-              24 *
-              60 *
-              60 *
-              1000
-        ),
+
+        dueDate:
+          new Date(
+            Date.now() +
+              7 *
+                24 *
+                60 *
+                60 *
+                1000
+          ),
       });
 
     /* reduce copies */
 
     book.availableCopies -= 1;
 
-    /* clear reservation */
-
-    if (
-      book.reservedBy &&
-      book.reservedBy.toString() ===
-        req.user._id.toString()
-    ) {
-
-      book.reservedBy =
-        null;
-
-      book.reservationQueue =
-        book.reservationQueue.filter(
-          (id) =>
-            id.toString() !==
-            req.user._id.toString()
-        );
-
-      await Borrow.findOneAndDelete(
-        {
-          user: req.user._id,
-          book: bookId,
-          status:
-            "reserved",
-        }
-      );
-    }
-
     await book.save();
 
-    res.status(200).json({
+    res.json({
       success: true,
       message:
         "Book borrowed successfully",
-      borrow,
+      record: borrow,
     });
 
-  } catch (err) {
+  } catch (error) {
+
+    console.log(error);
 
     res.status(500).json({
       success: false,
       message:
-        err.message,
+        error.message,
     });
 
   }
