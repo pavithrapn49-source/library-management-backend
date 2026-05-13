@@ -28,7 +28,7 @@ Password: admin123
 Email: member@gmail.com  
 Password: member123
 
-> If these users are not created, use Register page and assign role manually in MongoDB.
+    If these users are not created, use Register page and assign role manually in MongoDB.
 
 ---
 
