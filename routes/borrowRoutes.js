@@ -67,9 +67,9 @@ router.get(
   getMyHistory
 );
 
-/* ADMIN */
+/* ADMIN TRANSACTIONS */
 router.get(
-  "/all",
+  "/transactions/all",
   protect,
   adminOnly,
   getAllTransactions
