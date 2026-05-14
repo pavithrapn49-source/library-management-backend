@@ -1,25 +1,36 @@
 import Borrow from "../models/Borrow.js";
 import Book from "../models/book.js";
 
-/* ================= RESERVE ================= */
+/* ================= RESERVE BOOK ================= */
 export const reserveBook = async (req, res) => {
   try {
     const { bookId } = req.body;
 
     const book = await Book.findById(bookId);
+
     if (!book) {
-      return res.status(404).json({ success: false, message: "Book not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
     }
 
-    const exists = await Borrow.findOne({
+    /* CHECK EXISTING RESERVED */
+
+    const alreadyReserved = await Borrow.findOne({
       user: req.user._id,
       book: bookId,
       status: "reserved",
     });
 
-    if (exists) {
-      return res.status(400).json({ success: false, message: "Already reserved" });
+    if (alreadyReserved) {
+      return res.status(400).json({
+        success: false,
+        message: "Already reserved",
+      });
     }
+
+    /* CREATE RESERVED RECORD */
 
     const record = await Borrow.create({
       user: req.user._id,
@@ -28,16 +39,37 @@ export const reserveBook = async (req, res) => {
       reservedAt: new Date(),
     });
 
-    book.reservationQueue.push(req.user._id);
+    /* ADD USER TO QUEUE */
+
+    if (
+      !book.reservationQueue.includes(
+        req.user._id
+      )
+    ) {
+      book.reservationQueue.push(
+        req.user._id
+      );
+    }
+
     await book.save();
 
-    res.json({ success: true, record });
+    res.status(200).json({
+      success: true,
+      message: "Book reserved successfully",
+      record,
+    });
 
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+
   }
 };
-/* ================= BORROW ================= */
+
+/* ================= BORROW BOOK ================= */
 export const borrowBook = async (req, res) => {
   try {
 
@@ -52,7 +84,7 @@ export const borrowBook = async (req, res) => {
       });
     }
 
-    /* NO COPIES */
+    /* CHECK COPIES */
 
     if (book.availableCopies <= 0) {
       return res.status(400).json({
@@ -61,39 +93,69 @@ export const borrowBook = async (req, res) => {
       });
     }
 
-    /* ALREADY BORROWED */
+    /* CHECK ALREADY BORROWED */
 
-    const exists = await Borrow.findOne({
-      user: req.user._id,
-      book: bookId,
-      status: "borrowed",
-    });
+    const alreadyBorrowed =
+      await Borrow.findOne({
+        user: req.user._id,
+        book: bookId,
+        status: "borrowed",
+      });
 
-    if (exists) {
+    if (alreadyBorrowed) {
       return res.status(400).json({
         success: false,
         message: "Already borrowed",
       });
     }
 
-    /* CREATE RECORD */
+    /* CREATE BORROW RECORD */
 
-    const record = await Borrow.create({
-      user: req.user._id,
-      book: bookId,
-      status: "borrowed",
-      borrowDate: new Date(),
-      dueDate: new Date(
-        Date.now() +
-          7 * 24 * 60 * 60 * 1000
-      ),
-    });
+    const borrowRecord =
+      await Borrow.create({
+        user: req.user._id,
+        book: bookId,
+        status: "borrowed",
+        borrowDate: new Date(),
+        dueDate: new Date(
+          Date.now() +
+            7 * 24 * 60 * 60 * 1000
+        ),
+      });
+
+    /* ALSO CREATE RESERVED RECORD
+       THIS MAKES IT SHOW IN RESERVED SECTION */
+
+    const alreadyReserved =
+      await Borrow.findOne({
+        user: req.user._id,
+        book: bookId,
+        status: "reserved",
+      });
+
+    if (!alreadyReserved) {
+
+      await Borrow.create({
+        user: req.user._id,
+        book: bookId,
+        status: "reserved",
+        reservedAt: new Date(),
+      });
+
+      if (
+        !book.reservationQueue.includes(
+          req.user._id
+        )
+      ) {
+        book.reservationQueue.push(
+          req.user._id
+        );
+      }
+    }
 
     /* UPDATE COPIES */
 
     book.availableCopies -= 1;
-
-    /* UPDATE STATUS */
 
     if (book.availableCopies <= 0) {
 
@@ -107,22 +169,13 @@ export const borrowBook = async (req, res) => {
 
     }
 
-    /* REMOVE USER FROM QUEUE */
-
-    book.reservationQueue =
-      book.reservationQueue.filter(
-        (id) =>
-          id.toString() !==
-          req.user._id.toString()
-      );
-
     await book.save();
 
     res.status(200).json({
       success: true,
       message:
         "Book borrowed successfully",
-      record,
+      record: borrowRecord,
     });
 
   } catch (err) {
@@ -135,7 +188,7 @@ export const borrowBook = async (req, res) => {
   }
 };
 
-/* ================= RETURN ================= */
+/* ================= RETURN BOOK ================= */
 export const returnBook = async (req, res) => {
   try {
 
@@ -152,7 +205,7 @@ export const returnBook = async (req, res) => {
       });
     }
 
-    /* ALREADY RETURNED */
+    /* CHECK ALREADY RETURNED */
 
     if (borrow.status === "returned") {
       return res.status(400).json({
@@ -196,15 +249,16 @@ export const returnBook = async (req, res) => {
       borrow.book._id
     );
 
-    book.availableCopies += 1;
+    if (book) {
 
-    /* UPDATE STATUS */
+      book.availableCopies += 1;
 
-    if (book.availableCopies > 0) {
-      book.status = "available";
+      if (book.availableCopies > 0) {
+        book.status = "available";
+      }
+
+      await book.save();
     }
-
-    await book.save();
 
     res.status(200).json({
       success: true,
@@ -224,50 +278,147 @@ export const returnBook = async (req, res) => {
 };
 
 /* ================= GET BORROWED ================= */
-export const getMyBorrowedBooks = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user._id,
-    status: "borrowed",
-  }).populate("book");
+export const getMyBorrowedBooks =
+  async (req, res) => {
 
-  res.json({ success: true, records });
-};
+    try {
+
+      const records =
+        await Borrow.find({
+          user: req.user._id,
+          status: "borrowed",
+        }).populate("book");
+
+      res.status(200).json({
+        success: true,
+        records,
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+
+    }
+  };
 
 /* ================= GET RESERVED ================= */
-export const getMyReservedBooks = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user._id,
-    status: "reserved",
-  }).populate("book");
+export const getMyReservedBooks =
+  async (req, res) => {
 
-  res.json({ success: true, records });
-};
+    try {
+
+      const records =
+        await Borrow.find({
+          user: req.user._id,
+          status: "reserved",
+        }).populate("book");
+
+      res.status(200).json({
+        success: true,
+        records,
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+
+    }
+  };
 
 /* ================= GET RETURNED ================= */
-export const getMyReturnedBooks = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user._id,
-    status: "returned",
-  }).populate("book");
+export const getMyReturnedBooks =
+  async (req, res) => {
 
-  res.json({ success: true, records });
-};
+    try {
 
-/* ================= HISTORY ================= */
-export const getMyHistory = async (req, res) => {
-  const records = await Borrow.find({
-    user: req.user._id,
-  }).populate("book");
+      const records =
+        await Borrow.find({
+          user: req.user._id,
+          status: "returned",
+        }).populate("book");
 
-  res.json({ success: true, records });
-};
+      res.status(200).json({
+        success: true,
+        records,
+      });
 
-/* ================= ADMIN ================= */
-export const getAllTransactions = async (req, res) => {
-  const records = await Borrow.find()
-    .populate("user", "name email")
-    .populate("book", "title author")
-    .sort({ createdAt: -1 });
+    } catch (err) {
 
-  res.json({ success: true, records });
-};
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+
+    }
+  };
+
+/* ================= GET HISTORY ================= */
+export const getMyHistory =
+  async (req, res) => {
+
+    try {
+
+      const records =
+        await Borrow.find({
+          user: req.user._id,
+        })
+          .populate("book")
+          .sort({
+            createdAt: -1,
+          });
+
+      res.status(200).json({
+        success: true,
+        records,
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+
+    }
+  };
+
+/* ================= ADMIN TRANSACTIONS ================= */
+export const getAllTransactions =
+  async (req, res) => {
+
+    try {
+
+      const records =
+        await Borrow.find()
+          .populate(
+            "user",
+            "name email"
+          )
+          .populate(
+            "book",
+            "title author"
+          )
+          .sort({
+            createdAt: -1,
+          });
+
+      res.status(200).json({
+        success: true,
+        records,
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+
+    }
+  };
