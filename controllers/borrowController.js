@@ -37,20 +37,31 @@ export const reserveBook = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 /* ================= BORROW ================= */
 export const borrowBook = async (req, res) => {
   try {
+
     const { bookId } = req.body;
 
     const book = await Book.findById(bookId);
+
     if (!book) {
-      return res.status(404).json({ success: false, message: "Book not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
     }
 
+    /* NO COPIES */
+
     if (book.availableCopies <= 0) {
-      return res.status(400).json({ success: false, message: "Not available" });
+      return res.status(400).json({
+        success: false,
+        message: "Book not available",
+      });
     }
+
+    /* ALREADY BORROWED */
 
     const exists = await Borrow.findOne({
       user: req.user._id,
@@ -59,64 +70,156 @@ export const borrowBook = async (req, res) => {
     });
 
     if (exists) {
-      return res.status(400).json({ success: false, message: "Already borrowed" });
+      return res.status(400).json({
+        success: false,
+        message: "Already borrowed",
+      });
     }
+
+    /* CREATE RECORD */
 
     const record = await Borrow.create({
       user: req.user._id,
       book: bookId,
       status: "borrowed",
       borrowDate: new Date(),
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      dueDate: new Date(
+        Date.now() +
+          7 * 24 * 60 * 60 * 1000
+      ),
     });
 
+    /* UPDATE COPIES */
+
     book.availableCopies -= 1;
+
+    /* UPDATE STATUS */
+
+    if (book.availableCopies <= 0) {
+
+      book.availableCopies = 0;
+
+      book.status = "unavailable";
+
+    } else {
+
+      book.status = "available";
+
+    }
+
+    /* REMOVE USER FROM QUEUE */
+
+    book.reservationQueue =
+      book.reservationQueue.filter(
+        (id) =>
+          id.toString() !==
+          req.user._id.toString()
+      );
+
     await book.save();
 
-    res.json({ success: true, record });
+    res.status(200).json({
+      success: true,
+      message:
+        "Book borrowed successfully",
+      record,
+    });
 
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+
   }
 };
 
 /* ================= RETURN ================= */
 export const returnBook = async (req, res) => {
   try {
+
     const { borrowId } = req.body;
 
-    const borrow = await Borrow.findById(borrowId).populate("book");
+    const borrow = await Borrow.findById(
+      borrowId
+    ).populate("book");
+
     if (!borrow) {
-      return res.status(404).json({ success: false, message: "Not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Borrow record not found",
+      });
     }
 
+    /* ALREADY RETURNED */
+
     if (borrow.status === "returned") {
-      return res.status(400).json({ success: false, message: "Already returned" });
+      return res.status(400).json({
+        success: false,
+        message: "Already returned",
+      });
     }
 
     let fine = 0;
+
     const today = new Date();
 
-    if (borrow.dueDate && today > borrow.dueDate) {
-      const days = Math.ceil((today - borrow.dueDate) / (1000 * 60 * 60 * 24));
+    /* CALCULATE FINE */
+
+    if (
+      borrow.dueDate &&
+      today > borrow.dueDate
+    ) {
+
+      const days = Math.ceil(
+        (today - borrow.dueDate) /
+          (1000 * 60 * 60 * 24)
+      );
+
       fine = days * 10;
     }
 
+    /* UPDATE BORROW */
+
     borrow.status = "returned";
+
     borrow.returnDate = today;
+
     borrow.fine = fine;
 
     await borrow.save();
 
-    const book = await Book.findById(borrow.book._id);
+    /* UPDATE BOOK */
+
+    const book = await Book.findById(
+      borrow.book._id
+    );
+
     book.availableCopies += 1;
+
+    /* UPDATE STATUS */
+
+    if (book.availableCopies > 0) {
+      book.status = "available";
+    }
 
     await book.save();
 
-    res.json({ success: true, fine });
+    res.status(200).json({
+      success: true,
+      message:
+        "Book returned successfully",
+      fine,
+    });
 
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+
   }
 };
 
