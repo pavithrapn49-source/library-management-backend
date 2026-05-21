@@ -4,6 +4,16 @@ import Book from "../models/book.js";
 /* ================= RESERVE BOOK ================= */
 export const reserveBook = async (req, res) => {
   try {
+
+    /* PREVENT ADMIN */
+
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admins cannot reserve books",
+      });
+    }
+
     const { bookId } = req.body;
 
     const book = await Book.findById(bookId);
@@ -15,7 +25,7 @@ export const reserveBook = async (req, res) => {
       });
     }
 
-    /* CHECK EXISTING RESERVED */
+    /* CHECK ALREADY RESERVED */
 
     const alreadyReserved = await Borrow.findOne({
       user: req.user._id,
@@ -30,6 +40,21 @@ export const reserveBook = async (req, res) => {
       });
     }
 
+    /* CHECK ALREADY BORROWED */
+
+    const alreadyBorrowed = await Borrow.findOne({
+      user: req.user._id,
+      book: bookId,
+      status: "borrowed",
+    });
+
+    if (alreadyBorrowed) {
+      return res.status(400).json({
+        success: false,
+        message: "Book already borrowed",
+      });
+    }
+
     /* CREATE RESERVED RECORD */
 
     const record = await Borrow.create({
@@ -39,17 +64,21 @@ export const reserveBook = async (req, res) => {
       reservedAt: new Date(),
     });
 
-    /* ADD USER TO QUEUE */
+    /* ADD TO RESERVATION QUEUE */
 
     if (
-      !book.reservationQueue.includes(
-        req.user._id
+      !book.reservationQueue.some(
+        (id) =>
+          id.toString() ===
+          req.user._id.toString()
       )
     ) {
       book.reservationQueue.push(
         req.user._id
       );
     }
+
+    book.status = "reserved";
 
     await book.save();
 
@@ -73,6 +102,15 @@ export const reserveBook = async (req, res) => {
 export const borrowBook = async (req, res) => {
   try {
 
+    /* PREVENT ADMIN */
+
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admins cannot borrow books",
+      });
+    }
+
     const { bookId } = req.body;
 
     const book = await Book.findById(bookId);
@@ -84,7 +122,7 @@ export const borrowBook = async (req, res) => {
       });
     }
 
-    /* CHECK COPIES */
+    /* CHECK AVAILABILITY */
 
     if (book.availableCopies <= 0) {
       return res.status(400).json({
@@ -123,50 +161,32 @@ export const borrowBook = async (req, res) => {
         ),
       });
 
-    /* ALSO CREATE RESERVED RECORD
-       THIS MAKES IT SHOW IN RESERVED SECTION */
+    /* REMOVE RESERVED ENTRY */
 
-    const alreadyReserved =
-      await Borrow.findOne({
-        user: req.user._id,
-        book: bookId,
-        status: "reserved",
-      });
+    await Borrow.findOneAndDelete({
+      user: req.user._id,
+      book: bookId,
+      status: "reserved",
+    });
 
-    if (!alreadyReserved) {
+    /* REMOVE FROM QUEUE */
 
-      await Borrow.create({
-        user: req.user._id,
-        book: bookId,
-        status: "reserved",
-        reservedAt: new Date(),
-      });
-
-      if (
-        !book.reservationQueue.includes(
-          req.user._id
-        )
-      ) {
-        book.reservationQueue.push(
-          req.user._id
-        );
-      }
-    }
+    book.reservationQueue =
+      book.reservationQueue.filter(
+        (id) =>
+          id.toString() !==
+          req.user._id.toString()
+      );
 
     /* UPDATE COPIES */
 
     book.availableCopies -= 1;
 
     if (book.availableCopies <= 0) {
-
       book.availableCopies = 0;
-
       book.status = "unavailable";
-
     } else {
-
       book.status = "available";
-
     }
 
     await book.save();
@@ -205,7 +225,7 @@ export const returnBook = async (req, res) => {
       });
     }
 
-    /* CHECK ALREADY RETURNED */
+    /* CHECK RETURNED */
 
     if (borrow.status === "returned") {
       return res.status(400).json({
@@ -321,7 +341,7 @@ export const getMyReservedBooks =
         records,
       });
 
-    } catch (err) {
+      } catch (err) {
 
       res.status(500).json({
         success: false,
@@ -398,7 +418,7 @@ export const getAllTransactions =
         await Borrow.find()
           .populate(
             "user",
-            "name email"
+            "name email role"
           )
           .populate(
             "book",
