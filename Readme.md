@@ -30,6 +30,11 @@ Password: member123
 
     If these users are not created, use Register page and assign role manually in MongoDB.
 
+## Librarian Login
+
+Email: librarian@gmail.com  
+Password: librarian123
+
 ---
 
 # 📌 Project Overview
