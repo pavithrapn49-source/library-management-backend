@@ -70,11 +70,13 @@ router.post(
 
 /* ================= ADMIN ROUTES ================= */
 
-// All Transactions
 router.get(
   "/all",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles(
+    "admin",
+    "librarian"
+  ),
   getAllTransactions
 );
 
