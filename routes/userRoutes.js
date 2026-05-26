@@ -1,30 +1,60 @@
 import express from "express";
+
 import {
   registerUser,
   loginUser,
   getProfile,
   getAllUsers,
   deleteUser,
-  updateUserRole
+  updateUserRole,
 } from "../controllers/userController.js";
 
 import {
   protect,
-  authorizeRoles
+  authorizeRoles,
 } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* PUBLIC */
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+/* ================= PUBLIC ROUTES ================= */
 
-/* USER */
-router.get("/me", protect, getProfile);
+// Register
+router.post(
+  "/register",
+  registerUser
+);
 
-/* ADMIN */
-router.get("/", protect, authorizeRoles("admin"), getAllUsers);
+// Login
+router.post(
+  "/login",
+  loginUser
+);
 
+/* ================= USER ROUTES ================= */
+
+// Get Logged-in User Profile
+router.get(
+  "/me",
+  protect,
+  getProfile
+);
+
+/* ================= ADMIN + LIBRARIAN ================= */
+
+// Get All Users
+router.get(
+  "/",
+  protect,
+  authorizeRoles(
+    "admin",
+    "librarian"
+  ),
+  getAllUsers
+);
+
+/* ================= ADMIN ONLY ================= */
+
+// Delete User
 router.delete(
   "/:id",
   protect,
@@ -32,6 +62,7 @@ router.delete(
   deleteUser
 );
 
+// Update User Role
 router.put(
   "/:id/role",
   protect,
